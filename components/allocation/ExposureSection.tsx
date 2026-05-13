@@ -348,7 +348,7 @@ export function ExposureSection({ userId }: ExposureSectionProps) {
   const [isOpen, setIsOpen] = useState(false);
   const reducedMotion = useReducedMotion();
 
-  const { data, isLoading, isError, refetch, isFetching } = usePortfolioExposure(userId, isOpen);
+  const { data, isLoading, isError, isFetching, refresh } = usePortfolioExposure(userId, isOpen);
 
   const exposure = data?.exposure;
   const cached = data?.cached;
@@ -403,7 +403,7 @@ export function ExposureSection({ userId }: ExposureSectionProps) {
                     size="sm"
                     className="h-7 px-2 text-xs"
                     disabled={isFetching}
-                    onClick={() => refetch()}
+                    onClick={() => refresh()}
                   >
                     <RefreshCw className={`h-3 w-3 mr-1 ${isFetching ? 'animate-spin' : ''}`} />
                     Aggiorna

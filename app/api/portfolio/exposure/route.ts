@@ -31,6 +31,12 @@ export async function GET(request: NextRequest) {
     const decodedToken = await requireFirebaseAuth(request);
     const userId = decodedToken.uid;
 
+    // Force refresh bypasses the Firestore cache read but still writes the
+    // recomputed result back. Used by the "Aggiorna" button in the UI when the
+    // user explicitly wants fresh data even though the portfolio composition
+    // hasn't changed.
+    const forceRefresh = request.nextUrl.searchParams.get('force') === 'true';
+
     const assets = await getUserAssetsAdmin(userId);
 
     // Build the expected cache key before reading cache, so we can validate staleness
@@ -48,29 +54,31 @@ export async function GET(request: NextRequest) {
     }, 0);
     const expectedCacheKey = `${etfAssets.length}-${etfAssets.map((a) => a.ticker).sort().join(',')}-${Math.round(totalPortfolioValue)}`;
 
-    // Attempt to serve from cache
-    const cacheRef = adminDb.collection(EXPOSURE_CACHE_COLLECTION).doc(userId);
-    const cacheSnap = await cacheRef.get();
+    // Attempt to serve from cache (skipped on force refresh)
+    if (!forceRefresh) {
+      const cacheRef = adminDb.collection(EXPOSURE_CACHE_COLLECTION).doc(userId);
+      const cacheSnap = await cacheRef.get();
 
-    if (cacheSnap.exists) {
-      const cached = cacheSnap.data()!;
-      const cachedAt: Timestamp = cached.cachedAt;
-      const ageMs = Date.now() - cachedAt.toMillis();
+      if (cacheSnap.exists) {
+        const cached = cacheSnap.data()!;
+        const cachedAt: Timestamp = cached.cachedAt;
+        const ageMs = Date.now() - cachedAt.toMillis();
 
-      if (ageMs < CACHE_TTL_MS && cached.cacheKey === expectedCacheKey) {
-        const response: PortfolioExposureResponse = {
-          exposure: cached.exposure as PortfolioExposureData,
-          cached: true,
-        };
-        return NextResponse.json(response);
+        if (ageMs < CACHE_TTL_MS && cached.cacheKey === expectedCacheKey) {
+          const response: PortfolioExposureResponse = {
+            exposure: cached.exposure as PortfolioExposureData,
+            cached: true,
+          };
+          return NextResponse.json(response);
+        }
       }
     }
 
-    // Cache miss or stale — recompute from Yahoo Finance
+    // Cache miss, stale, or force refresh — recompute from Yahoo Finance
     const exposure = await computePortfolioExposure(assets);
 
     // Persist to Firestore (fire-and-forget — cache failure must never break the response)
-    cacheRef.set({
+    adminDb.collection(EXPOSURE_CACHE_COLLECTION).doc(userId).set({
       cachedAt: Timestamp.now(),
       cacheKey: exposure.cacheKey,
       exposure,
