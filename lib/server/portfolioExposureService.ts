@@ -135,11 +135,12 @@ export async function computePortfolioExposure(
     contributionEur: number,
     holdingPct: number,
     assetName: string,
-    ticker: string
+    ticker: string,
+    assetValueEur: number
   ) => {
     const key = symbol.toUpperCase();
     const existing = holdingMap.get(key);
-    const source = { assetName, ticker, contributionEur, holdingPct };
+    const source = { assetName, ticker, contributionEur, holdingPct, assetValueEur };
     if (existing) {
       existing.exposureEur += contributionEur;
       existing.sources.push(source);
@@ -160,7 +161,8 @@ export async function computePortfolioExposure(
         h.holdingPercent * assetValue,
         h.holdingPercent,
         asset.name,
-        asset.ticker
+        asset.ticker,
+        assetValue
       );
     }
   }
@@ -174,7 +176,8 @@ export async function computePortfolioExposure(
       assetValue,
       1,
       asset.name,
-      asset.ticker
+      asset.ticker,
+      assetValue
     );
   }
 
@@ -202,15 +205,19 @@ export async function computePortfolioExposure(
       for (const [key, weight] of Object.entries(sectorObj)) {
         if (typeof weight !== 'number' || weight <= 0) continue;
         const contribution = weight * assetValue;
+        const source = {
+          assetName: asset.name,
+          ticker: asset.ticker,
+          contributionEur: contribution,
+          sectorWeight: weight,
+          assetValueEur: assetValue,
+        };
         const existing = sectorMap.get(key);
         if (existing) {
           existing.exposureEur += contribution;
-          existing.sources.push({ assetName: asset.name, ticker: asset.ticker, contributionEur: contribution });
+          existing.sources.push(source);
         } else {
-          sectorMap.set(key, {
-            exposureEur: contribution,
-            sources: [{ assetName: asset.name, ticker: asset.ticker, contributionEur: contribution }],
-          });
+          sectorMap.set(key, { exposureEur: contribution, sources: [source] });
         }
       }
     }

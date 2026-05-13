@@ -67,6 +67,112 @@ function SkeletonRow() {
   );
 }
 
+// Render one source line as either "X% di €Y = €Z" (when weight + value known)
+// or "€Z" (when only the contribution is known, e.g. direct stocks or v1 cached docs).
+function SourceFormulaLine({
+  assetName,
+  ticker,
+  contributionEur,
+  weight,
+  assetValueEur,
+}: {
+  assetName: string;
+  ticker: string;
+  contributionEur: number;
+  weight?: number;
+  assetValueEur?: number;
+}) {
+  const canRenderFormula =
+    typeof weight === 'number' &&
+    weight > 0 &&
+    weight < 1 &&
+    typeof assetValueEur === 'number' &&
+    assetValueEur > 0;
+
+  return (
+    <div className="text-xs">
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="truncate text-foreground/80">
+          <span className="font-medium">{ticker}</span>
+          <span className="text-muted-foreground"> · {assetName}</span>
+        </span>
+        <span className="shrink-0 tabular-nums font-medium text-foreground/80">
+          {formatCurrency(contributionEur)}
+        </span>
+      </div>
+      {canRenderFormula && (
+        <div className="text-[11px] text-muted-foreground tabular-nums mt-0.5">
+          {formatPercentage(weight! * 100, 2)} di {formatCurrency(assetValueEur!)} = {formatCurrency(contributionEur)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Generic expandable row with chevron affordance — shared between all 3 tabs
+function ExpandableRow({
+  open,
+  onToggle,
+  title,
+  subtitle,
+  rightTop,
+  rightBottom,
+  pct,
+  drillDown,
+  expandable,
+}: {
+  open: boolean;
+  onToggle: () => void;
+  title: string;
+  subtitle?: string;
+  rightTop: string;
+  rightBottom: string;
+  pct: number;
+  drillDown?: React.ReactNode;
+  expandable: boolean;
+}) {
+  return (
+    <div className="py-2.5">
+      <button
+        type="button"
+        className="w-full text-left"
+        onClick={expandable ? () => onToggle() : undefined}
+        aria-expanded={expandable ? open : undefined}
+        disabled={!expandable}
+      >
+        <div className="flex items-center gap-3">
+          <div className="min-w-0 flex-1">
+            <span className="block truncate text-sm font-medium text-foreground">
+              {title}
+            </span>
+            {subtitle && (
+              <span className="block text-xs text-muted-foreground">{subtitle}</span>
+            )}
+          </div>
+          <div className="shrink-0 text-right">
+            <span className="block text-sm font-semibold tabular-nums">{rightTop}</span>
+            <span className="block text-xs text-muted-foreground tabular-nums">{rightBottom}</span>
+          </div>
+          {expandable && (
+            <ChevronDown
+              className={`h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200 motion-reduce:transition-none ${
+                open ? 'rotate-180' : ''
+              }`}
+            />
+          )}
+        </div>
+        <ExposureBar pct={pct} className="mt-1.5" />
+      </button>
+
+      {open && drillDown && (
+        <div className="mt-2 rounded-md bg-muted/40 px-3 py-2.5 space-y-2">
+          {drillDown}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function HoldingsList({ holdings }: { holdings: ExposureHolding[] }) {
   const [expanded, setExpanded] = useState<string | null>(null);
 
@@ -80,54 +186,53 @@ function HoldingsList({ holdings }: { holdings: ExposureHolding[] }) {
 
   return (
     <div className="divide-y divide-border/50">
-      {holdings.map((h) => (
-        <div key={h.symbol} className="py-2.5">
-          <button
-            type="button"
-            className="w-full text-left"
-            onClick={() => setExpanded(expanded === h.symbol ? null : h.symbol)}
-          >
-            <div className="flex items-center gap-3">
-              <div className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-medium text-foreground">
-                  {h.name}
-                </span>
-                <span className="block text-xs text-muted-foreground">{h.symbol}</span>
-              </div>
-              <div className="shrink-0 text-right">
-                <span className="block text-sm font-semibold tabular-nums">
-                  {formatPercentage(h.exposurePct * 100, 2)}
-                </span>
-                <span className="block text-xs text-muted-foreground tabular-nums">
-                  {formatCurrency(h.exposureEur)}
-                </span>
-              </div>
-            </div>
-            <ExposureBar pct={h.exposurePct} className="mt-1.5" />
-          </button>
-
-          {/* Drill-down: which ETFs contribute */}
-          {expanded === h.symbol && h.sources.length > 0 && (
-            <div className="mt-2 rounded-md bg-muted/40 px-3 py-2 space-y-1">
-              {h.sources.map((src, i) => (
-                <div key={i} className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span className="truncate">{src.assetName} ({src.ticker})</span>
-                  <span className="tabular-nums shrink-0 ml-2">
-                    {formatCurrency(src.contributionEur)}
-                    {' '}·{' '}
-                    {formatPercentage(src.holdingPct * 100, 2)} nel fondo
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      ))}
+      {holdings.map((h) => {
+        const isOpen = expanded === h.symbol;
+        return (
+          <ExpandableRow
+            key={h.symbol}
+            open={isOpen}
+            onToggle={() => setExpanded(isOpen ? null : h.symbol)}
+            title={h.name}
+            subtitle={h.symbol}
+            rightTop={formatPercentage(h.exposurePct * 100, 2)}
+            rightBottom={formatCurrency(h.exposureEur)}
+            pct={h.exposurePct}
+            expandable={h.sources.length > 0}
+            drillDown={
+              <>
+                {h.sources.map((src, i) => (
+                  <SourceFormulaLine
+                    key={`${src.ticker}-${i}`}
+                    assetName={src.assetName}
+                    ticker={src.ticker}
+                    contributionEur={src.contributionEur}
+                    weight={src.holdingPct}
+                    assetValueEur={src.assetValueEur}
+                  />
+                ))}
+                {h.sources.length > 1 && (
+                  <div className="flex items-center justify-between border-t border-border/60 pt-1.5 text-xs">
+                    <span className="font-medium text-foreground/80">
+                      Totale {h.name}
+                    </span>
+                    <span className="tabular-nums font-semibold">
+                      {formatCurrency(h.exposureEur)}
+                    </span>
+                  </div>
+                )}
+              </>
+            }
+          />
+        );
+      })}
     </div>
   );
 }
 
 function SectorList({ sectors }: { sectors: ExposureSector[] }) {
+  const [expanded, setExpanded] = useState<string | null>(null);
+
   if (sectors.length === 0) {
     return (
       <p className="py-6 text-center text-sm text-muted-foreground">
@@ -138,24 +243,45 @@ function SectorList({ sectors }: { sectors: ExposureSector[] }) {
 
   return (
     <div className="divide-y divide-border/50">
-      {sectors.map((s) => (
-        <div key={s.key} className="py-2.5">
-          <div className="flex items-center gap-3">
-            <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
-              {s.label}
-            </span>
-            <div className="shrink-0 text-right">
-              <span className="block text-sm font-semibold tabular-nums">
-                {formatPercentage(s.exposurePct * 100, 2)}
-              </span>
-              <span className="block text-xs text-muted-foreground tabular-nums">
-                {formatCurrency(s.exposureEur)}
-              </span>
-            </div>
-          </div>
-          <ExposureBar pct={s.exposurePct} className="mt-1.5" />
-        </div>
-      ))}
+      {sectors.map((s) => {
+        const isOpen = expanded === s.key;
+        return (
+          <ExpandableRow
+            key={s.key}
+            open={isOpen}
+            onToggle={() => setExpanded(isOpen ? null : s.key)}
+            title={s.label}
+            rightTop={formatPercentage(s.exposurePct * 100, 2)}
+            rightBottom={formatCurrency(s.exposureEur)}
+            pct={s.exposurePct}
+            expandable={s.sources.length > 0}
+            drillDown={
+              <>
+                {s.sources.map((src, i) => (
+                  <SourceFormulaLine
+                    key={`${src.ticker}-${i}`}
+                    assetName={src.assetName}
+                    ticker={src.ticker}
+                    contributionEur={src.contributionEur}
+                    weight={src.sectorWeight}
+                    assetValueEur={src.assetValueEur}
+                  />
+                ))}
+                {s.sources.length > 1 && (
+                  <div className="flex items-center justify-between border-t border-border/60 pt-1.5 text-xs">
+                    <span className="font-medium text-foreground/80">
+                      Totale {s.label}
+                    </span>
+                    <span className="tabular-nums font-semibold">
+                      {formatCurrency(s.exposureEur)}
+                    </span>
+                  </div>
+                )}
+              </>
+            }
+          />
+        );
+      })}
     </div>
   );
 }
@@ -173,41 +299,47 @@ function IssuerList({ issuers }: { issuers: ExposureIssuer[] }) {
 
   return (
     <div className="divide-y divide-border/50">
-      {issuers.map((issuer) => (
-        <div key={issuer.family} className="py-2.5">
-          <button
-            type="button"
-            className="w-full text-left"
-            onClick={() => setExpanded(expanded === issuer.family ? null : issuer.family)}
-          >
-            <div className="flex items-center gap-3">
-              <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
-                {issuer.family}
-              </span>
-              <div className="shrink-0 text-right">
-                <span className="block text-sm font-semibold tabular-nums">
-                  {formatPercentage(issuer.exposurePct * 100, 2)}
-                </span>
-                <span className="block text-xs text-muted-foreground tabular-nums">
-                  {formatCurrency(issuer.exposureEur)}
-                </span>
-              </div>
-            </div>
-            <ExposureBar pct={issuer.exposurePct} className="mt-1.5" />
-          </button>
-
-          {expanded === issuer.family && (
-            <div className="mt-2 rounded-md bg-muted/40 px-3 py-2 space-y-1">
-              {issuer.assets.map((a, i) => (
-                <div key={i} className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span className="truncate">{a.name} ({a.ticker})</span>
-                  <span className="tabular-nums shrink-0 ml-2">{formatCurrency(a.valueEur)}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      ))}
+      {issuers.map((issuer) => {
+        const isOpen = expanded === issuer.family;
+        return (
+          <ExpandableRow
+            key={issuer.family}
+            open={isOpen}
+            onToggle={() => setExpanded(isOpen ? null : issuer.family)}
+            title={issuer.family}
+            rightTop={formatPercentage(issuer.exposurePct * 100, 2)}
+            rightBottom={formatCurrency(issuer.exposureEur)}
+            pct={issuer.exposurePct}
+            expandable={issuer.assets.length > 0}
+            drillDown={
+              <>
+                {issuer.assets.map((a, i) => (
+                  <div
+                    key={`${a.ticker}-${i}`}
+                    className="flex items-baseline justify-between gap-2 text-xs"
+                  >
+                    <span className="truncate text-foreground/80">
+                      <span className="font-medium">{a.ticker}</span>
+                      <span className="text-muted-foreground"> · {a.name}</span>
+                    </span>
+                    <span className="shrink-0 tabular-nums font-medium">
+                      {formatCurrency(a.valueEur)}
+                    </span>
+                  </div>
+                ))}
+                {issuer.assets.length > 1 && (
+                  <div className="flex items-center justify-between border-t border-border/60 pt-1.5 text-xs">
+                    <span className="font-medium text-foreground/80">Totale {issuer.family}</span>
+                    <span className="tabular-nums font-semibold">
+                      {formatCurrency(issuer.exposureEur)}
+                    </span>
+                  </div>
+                )}
+              </>
+            }
+          />
+        );
+      })}
     </div>
   );
 }

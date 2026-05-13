@@ -1,9 +1,12 @@
 // Source of a holding's contribution from a specific portfolio asset (ETF or stock).
+// Stored fields support an explicit formula display in the UI:
+//   contributionEur = holdingPct * assetValueEur
 export interface ExposureSource {
   assetName: string;
   ticker: string;
   contributionEur: number;
-  holdingPct: number; // the holding's % weight inside that ETF
+  holdingPct: number;     // the holding's % weight inside that ETF (1 for direct stocks)
+  assetValueEur?: number; // EUR value of the source ETF/stock; absent on v1 cached docs
 }
 
 // A single company holding aggregated across all ETFs + direct stocks.
@@ -16,6 +19,9 @@ export interface ExposureHolding {
 }
 
 // A single sector aggregated across all analyzed assets.
+// sectorWeight + assetValueEur let the UI render the formula
+//   contributionEur = sectorWeight * assetValueEur
+// Both fields are optional on v1 cached docs (added in a later iteration).
 export interface ExposureSector {
   key: string;   // Yahoo Finance key, e.g. "technology"
   label: string; // Italian label, e.g. "Tecnologia"
@@ -25,6 +31,8 @@ export interface ExposureSector {
     assetName: string;
     ticker: string;
     contributionEur: number;
+    sectorWeight?: number;  // 0..1 weight of this sector inside the source ETF
+    assetValueEur?: number; // EUR value of the source ETF
   }>;
 }
 
