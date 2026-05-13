@@ -476,36 +476,192 @@ Create `__tests__/portfolioExposureService.test.ts`:
 ## 13. Implementation phases
 
 Do these in order; each is a separate commit so reviewers can verify in isolation.
+Each phase is meant to be run in its own Claude Code session — the suggested prompts below are self-contained (no prior conversation context required) and point at the relevant sections of this spec.
 
-1. **Phase 1 — Scraper service + tests**
-   - `lib/server/justetfScraperService.ts`
-   - `__tests__/justetfScraper.test.ts` + fixture HTML
-   - `firestore.rules` additions
-   - **No** integration with exposure service yet. The function exists, has tests, doesn't run from any user flow.
+---
 
-2. **Phase 2 — Types & feature flag wiring**
-   - `types/exposure.ts` additions
-   - Feature flag read in `app/api/portfolio/exposure/route.ts`
-   - Pass `{ justEtfEnabled }` option to `computePortfolioExposure`
-   - `computePortfolioExposure` accepts the option but does nothing with it yet
-   - Cache key now includes the flag suffix
+### Phase 1 — Scraper service + tests
 
-3. **Phase 3 — Aggregation**
-   - Wire `fetchJustEtfDataForEtfs` into `computePortfolioExposure`
-   - Aggregate countries + currencies maps
-   - Also extend Yahoo `quoteSummary` modules to include `assetProfile` for direct stocks (country + currency attribution)
+**Scope**:
+- `lib/server/justetfScraperService.ts`
+- `__tests__/justetfScraper.test.ts` + fixture HTML at `__tests__/fixtures/justetf-swda.html`
+- `firestore.rules` additions (the `justetf-cache` collection)
+- **No** integration with exposure service yet. The function exists, has tests, doesn't run from any user flow.
 
-4. **Phase 4 — UI**
-   - Two new tabs in `ExposureSection.tsx` rendered conditionally on `justEtfEnabled`
-   - Empty state copy
-   - Updated disclaimer
-   - Tabs reuse the existing `<ExposureBar>` and row layout — minimal new components
+**Suggested prompt**:
+```
+Implementa la Fase 1 della spec descritta in docs/justetf-exposure-v2-spec.md.
+Concentrati esclusivamente su:
+  - lib/server/justetfScraperService.ts (vedi §4 per i selettori cheerio,
+    §5.1 per lo skeleton, §10 per User-Agent e timeouts, §11 per error handling)
+  - __tests__/justetfScraper.test.ts con la fixture
+    __tests__/fixtures/justetf-swda.html (salva una vera pagina JustETF
+    fetchata con un User-Agent browser, vedi §12.1)
+  - firestore.rules: aggiungi la regola justetf-cache (§8)
 
-5. **Phase 5 — Polish & docs**
-   - Update `CLAUDE.md` "Latest implementation" entry
-   - Update the existing `Esposizione Portfolio (2026-05-13)` line in CLAUDE.md to mention the v2 additions
-   - Update `SESSION_NOTES.md`
-   - Manual E2E walkthrough as per §12.3
+NON modificare portfolioExposureService.ts, ExposureSection.tsx, types/exposure.ts
+o l'API route in questa fase. La funzione fetchJustEtfBreakdown deve esistere ed
+essere testata ma non essere chiamata da nessun user flow.
+
+Al termine:
+  - npx tsc --noEmit deve passare
+  - npx vitest run __tests__/justetfScraper.test.ts deve passare
+  - commit + push sul branch corrente
+```
+
+---
+
+### Phase 2 — Types & feature flag wiring
+
+**Scope**:
+- `types/exposure.ts` additions (`ExposureCountry`, `ExposureCurrency`, `countries`/`currencies`/`justEtfEnabled` on `PortfolioExposureData`)
+- Feature flag read in `app/api/portfolio/exposure/route.ts`
+- Pass `{ justEtfEnabled }` option to `computePortfolioExposure`
+- `computePortfolioExposure` accepts the option but for now just sets `countries: []`, `currencies: []`, `justEtfEnabled`
+- Cache key now includes the flag suffix (`je0`/`je1`)
+- `.env.example` documents the new variable
+
+**Suggested prompt**:
+```
+Implementa la Fase 2 della spec descritta in docs/justetf-exposure-v2-spec.md.
+Presupponi che la Fase 1 sia già completata (lib/server/justetfScraperService.ts
+esiste e ha test passanti, ma non è chiamata da nessuna parte).
+
+Concentrati su:
+  - types/exposure.ts: aggiungi i tipi ExposureCountry e ExposureCurrency e
+    estendi PortfolioExposureData con countries, currencies, justEtfEnabled
+    (vedi §5.2)
+  - app/api/portfolio/exposure/route.ts: leggi
+    process.env.NEXT_PUBLIC_JUSTETF_SCRAPING_ENABLED === 'true' e passalo
+    come opzione { justEtfEnabled } a computePortfolioExposure (vedi §7)
+  - lib/server/portfolioExposureService.ts: la firma diventa
+    computePortfolioExposure(assets, opts?: { justEtfEnabled?: boolean }).
+    Per ora ritorna countries: [], currencies: [] e propaga justEtfEnabled
+    nel result. NON chiamare ancora fetchJustEtfBreakdown.
+  - cacheKey: aggiungi il suffisso -je0 / -je1 in modo che flippare il flag
+    invalidi automaticamente la cache utente (vedi §6.4)
+  - .env.example: documenta NEXT_PUBLIC_JUSTETF_SCRAPING_ENABLED
+
+NON toccare la UI in questa fase. ExposureSection.tsx resta invariato.
+
+Al termine:
+  - npx tsc --noEmit deve passare
+  - commit + push
+```
+
+---
+
+### Phase 3 — Aggregation
+
+**Scope**:
+- Wire `fetchJustEtfDataForEtfs` into `computePortfolioExposure`
+- Aggregate `countries` + `currencies` maps following the pattern in §6.2
+- Extend Yahoo `quoteSummary` modules to include `assetProfile` for direct stocks (country + currency attribution per §6.3 Option B)
+- Unit test the aggregation per §12.2
+
+**Suggested prompt**:
+```
+Implementa la Fase 3 della spec descritta in docs/justetf-exposure-v2-spec.md.
+Presupponi che le Fasi 1 e 2 siano completate: fetchJustEtfBreakdown esiste con
+i suoi test, i tipi sono in types/exposure.ts, il feature flag è propagato
+dall'API route a computePortfolioExposure ma non viene ancora usato per fare
+fetch reali.
+
+Concentrati su:
+  - lib/server/portfolioExposureService.ts:
+    1. Aggiungi l'helper fetchJustEtfDataForEtfs(etfAssets) (§6.1) che usa
+       Promise.allSettled su tutti gli ETF con isin valorizzato
+    2. Esegui l'helper SOLO quando opts.justEtfEnabled === true
+    3. Aggrega countryMap e currencyMap come nel pattern di §6.2
+       (stessa struttura del settoriale esistente)
+    4. Per le azioni dirette (type === 'stock'): aggiungi 'assetProfile' ai
+       modules di quoteSummary già richiesti e usa il country/currency del
+       profilo per attribuire il 100% del valore dell'asset (§6.3 Option B)
+    5. Popola countries/currencies nel result, ordinati per exposureEur desc
+  - __tests__/portfolioExposureService.test.ts: crea il file con i test
+    descritti in §12.2 (mock di fetchJustEtfBreakdown, 3 ETF fake, asserzioni
+    sull'aggregazione e sulle sources, flag off → array vuoti)
+
+NON toccare la UI in questa fase.
+
+Al termine:
+  - npx tsc --noEmit deve passare
+  - npx vitest run __tests__/portfolioExposureService.test.ts deve passare
+  - commit + push
+```
+
+---
+
+### Phase 4 — UI
+
+**Scope**:
+- Two new tabs in `ExposureSection.tsx` rendered **conditionally** on `exposure.justEtfEnabled`
+- New `CountryList` and `CurrencyList` row components (or one shared, parameterized)
+- Empty state copy per §9.3
+- Updated disclaimer copy per §9.2
+- Tabs reuse the existing `<ExposureBar>` and row layout — keep new code minimal
+
+**Suggested prompt**:
+```
+Implementa la Fase 4 della spec descritta in docs/justetf-exposure-v2-spec.md.
+Presupponi che le Fasi 1–3 siano completate: il backend già restituisce
+countries[] e currencies[] popolati quando NEXT_PUBLIC_JUSTETF_SCRAPING_ENABLED
+è true.
+
+Concentrati su components/allocation/ExposureSection.tsx:
+  - Aggiungi due TabsTrigger ("Paesi" e "Valute") tra "Settori" e "Emittenti
+    ETF", visibili SOLO quando exposure.justEtfEnabled === true (§9.1)
+  - Implementa CountryList e CurrencyList come componenti row identici a
+    SectorList già esistente nel file (stesso layout, stessa ExposureBar, no
+    drill-down sources per le valute — facoltativo per i paesi)
+  - Empty state quando justEtfEnabled è true ma countries è vuoto: copy in §9.3
+  - Aggiorna la copy del disclaimer in fondo alla card aggiungendo il paragrafo
+    in §9.2
+
+NON modificare il backend, i tipi, l'API route, o il service. Lavora solo
+sul componente UI.
+
+Per testare manualmente: imposta NEXT_PUBLIC_JUSTETF_SCRAPING_ENABLED=true in
+.env.local, riavvia npm run dev, apri /dashboard/allocation, espandi
+"Esposizione Portfolio". Servono asset ETF con ISIN valorizzato.
+
+Al termine:
+  - npx tsc --noEmit deve passare
+  - commit + push
+```
+
+---
+
+### Phase 5 — Polish & docs
+
+**Scope**:
+- Update `CLAUDE.md` "Latest implementation" line + the existing `Esposizione Portfolio (2026-05-13)` entry to mention v2 additions
+- Update `SESSION_NOTES.md`
+- Manual E2E walkthrough as per §12.3 and capture any rough edges
+- (Optional) Update the disclaimer wording based on what real data looks like
+
+**Suggested prompt**:
+```
+Implementa la Fase 5 della spec descritta in docs/justetf-exposure-v2-spec.md.
+Le Fasi 1–4 sono completate, la feature gira end-to-end dietro al flag
+NEXT_PUBLIC_JUSTETF_SCRAPING_ENABLED.
+
+Lavoro da fare:
+  - CLAUDE.md: aggiorna la "Latest implementation" section con la nuova v2 ed
+    estendi la riga esistente "Esposizione Portfolio (2026-05-13)" menzionando
+    i due nuovi tab Paesi/Valute, il flag, e il file dei tipi
+  - SESSION_NOTES.md: aggiungi una nuova sezione "JustETF v2" con: file
+    creati/modificati, decisioni prese, limitazioni note (vedi §15, §17 dello
+    spec)
+  - Esegui manualmente il walkthrough di §12.3 e annota eventuali problemi
+    riscontrati. Se trovi bug minori (es. label paesi tradotti male, percentuali
+    troncate, ETF che falliscono in modo non documentato), aprili come piccoli
+    fix nello stesso commit. Bug grossi → segnalali e fermati.
+
+Al termine:
+  - npx tsc --noEmit deve passare
+  - commit + push
+```
 
 ---
 
