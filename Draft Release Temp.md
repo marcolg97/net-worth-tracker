@@ -14,6 +14,7 @@
 - Added "Performance Asset Class" section to all summary emails, showing best and worst performing asset classes both by percentage change and by absolute euro change vs the previous period
 - Added manual send button in Settings → Report Email Mensili to preview the current month's summary email at any time without waiting for the end of the month
 - Added email recipient management in Settings: enable/disable the feature with a toggle, add or remove any number of recipient addresses
+- Added a confirmation dialog before logging out — prevents accidental sign-outs by asking "Esci dall'account?" before completing the action
 
 ## 🔧 Improvements
 
@@ -26,6 +27,8 @@
 - Improved the Net Worth Evolution chart in History: the line now renders clean and continuous without dots on every data point, matching the visual style of the area charts below it; note indicators (amber markers) are still shown on snapshots with attached notes
 - Improved error handling in Cashflow and Budget so temporary loading or save issues surface clearer feedback while keeping the page usable
 - Improved resilience when refreshing dashboard overview data after account changes, with safer fallback handling for non-critical failures
+- Redesigned the dashboard navigation: the sidebar now hosts the user profile, theme selector (light / dark / system), and logout in a single dropdown in the footer, replacing the separate top header bar. The Assistente AI entry has been promoted to a quick-access banner in the same footer
+- Redesigned the mobile bottom navigation as a centered floating pill bar with rounded corners and a smoother active-tab transition — replacing the previous full-width fixed bar
 
 ## 🐛 Bug Fixes
 
