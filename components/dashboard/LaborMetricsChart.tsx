@@ -47,7 +47,7 @@ export default function LaborMetricsChart({ data, isMobile }: LaborMetricsChartP
           tick={{ fontSize: isMobile ? 10 : 12 }}
         />
         <Tooltip
-          formatter={(value: number) => formatCurrency(value)}
+          formatter={(value) => formatCurrency(value as number)}
           contentStyle={{
             backgroundColor: 'var(--card)',
             border: '1px solid var(--border)',

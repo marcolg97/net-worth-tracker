@@ -959,7 +959,7 @@ export function FireCalculatorTab() {
                   tick={{ fontSize: isMobile ? 10 : 12 }}
                 />
                 <Tooltip
-                  formatter={(value: number) => formatCurrency(value)}
+                  formatter={(value) => formatCurrency(value as number)}
                   contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', color: 'var(--card-foreground)' }}
                   labelStyle={{ color: 'var(--foreground)' }}
                 />
