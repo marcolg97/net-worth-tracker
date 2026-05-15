@@ -48,7 +48,7 @@ export function CoastFireProjectionChart({
         <XAxis dataKey="calendarYear" />
         <YAxis width={marginLeft <= 20 ? 70 : 100} tickFormatter={(value) => formatCurrencyCompact(value)} />
         <Tooltip
-          formatter={(value: number, name: string) => [formatCurrency(value), name]}
+          formatter={(value, name) => [formatCurrency(value as number), name]}
           labelFormatter={(label, payload) => {
             const age = payload?.[0]?.payload?.age;
             return age ? `Anno ${label} · Età ${age}` : `Anno ${label}`;

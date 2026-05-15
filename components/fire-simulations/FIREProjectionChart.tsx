@@ -60,7 +60,7 @@ export function FIREProjectionChart({ yearlyData, bearYearsToFIRE, baseYearsToFI
           tickFormatter={(value) => formatCurrencyCompact(value)}
         />
         <Tooltip
-          formatter={(value: number, name: string) => [formatCurrency(value), name]}
+          formatter={(value, name) => [formatCurrency(value as number), name]}
           labelFormatter={(label) => `Anno ${label}`}
           labelStyle={{ color: '#000' }}
         />

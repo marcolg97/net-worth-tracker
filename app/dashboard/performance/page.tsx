@@ -1030,7 +1030,7 @@ export default function PerformancePage() {
                       stroke="var(--border)"
                     />
                     <Tooltip
-                      formatter={(value: number) => `${value.toFixed(2)}%`}
+                      formatter={(value) => `${(value as number).toFixed(2)}%`}
                       labelFormatter={(date) => new Date(date).toLocaleDateString('it-IT')}
                       contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--card-foreground)' }}
                       labelStyle={{ color: 'var(--card-foreground)' }}

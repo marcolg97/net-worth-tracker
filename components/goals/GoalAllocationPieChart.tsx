@@ -91,11 +91,11 @@ export function GoalAllocationPieChart({
                 ))}
               </Pie>
               <Tooltip
-                formatter={(value: number) => [
-                  `${formatCurrency(value)} (${totalValue > 0 ? ((value / totalValue) * 100).toFixed(1) : 0}%)`,
+                formatter={(value) => [
+                  `${formatCurrency(value as number)} (${totalValue > 0 ? (((value as number) / totalValue) * 100).toFixed(1) : 0}%)`,
                   '',
                 ]}
-                labelFormatter={(label: string) => label}
+                labelFormatter={(label) => label}
                 contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', color: 'var(--card-foreground)' }}
                 labelStyle={{ color: 'var(--foreground)' }}
               />

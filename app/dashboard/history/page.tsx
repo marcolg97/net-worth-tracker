@@ -799,7 +799,7 @@ export default function HistoryPage() {
                   domain={[(dataMin: number) => dataMin * 0.95, (dataMax: number) => dataMax * 1.05]}
                 />
                 <Tooltip
-                  formatter={(value: number) => formatCurrency(value)}
+                  formatter={(value) => formatCurrency(value as number)}
                   contentStyle={{
                     backgroundColor: 'var(--card)',
                     border: '1px solid var(--border)',
@@ -1042,7 +1042,7 @@ export default function HistoryPage() {
                     domain={[0, 100]}
                   />
                   <Tooltip
-                    formatter={(value: number) => `${value.toFixed(2)}%`}
+                    formatter={(value) => `${(value as number).toFixed(2)}%`}
                     contentStyle={{
                       backgroundColor: 'var(--card)',
                       border: '1px solid var(--border)',
@@ -1147,7 +1147,7 @@ export default function HistoryPage() {
                     tickFormatter={(value) => formatCurrencyCompact(value)}
                   />
                   <Tooltip
-                    formatter={(value: number) => formatCurrency(value)}
+                    formatter={(value) => formatCurrency(value as number)}
                     contentStyle={{
                       backgroundColor: 'var(--card)',
                       border: '1px solid var(--border)',
@@ -1293,7 +1293,7 @@ export default function HistoryPage() {
                     domain={[0, 100]}
                   />
                   <Tooltip
-                    formatter={(value: number) => `${value.toFixed(2)}%`}
+                    formatter={(value) => `${(value as number).toFixed(2)}%`}
                     contentStyle={{
                       backgroundColor: 'var(--card)',
                       border: '1px solid var(--border)',
@@ -1355,7 +1355,7 @@ export default function HistoryPage() {
                     domain={[(dataMin: number) => dataMin * 0.95, (dataMax: number) => dataMax * 1.05]}
                   />
                   <Tooltip
-                    formatter={(value: number) => formatCurrency(value)}
+                    formatter={(value) => formatCurrency(value as number)}
                     contentStyle={{
                       backgroundColor: 'var(--card)',
                       border: '1px solid var(--border)',
@@ -1458,13 +1458,12 @@ export default function HistoryPage() {
                   }
                 />
                 <Tooltip
-                  formatter={(value: number, name: string) => {
+                  formatter={(value, name) => {
+                    const num = value as number;
                     if (name === 'Variazione') {
-                      return showYoYPercentage
-                        ? `${value.toFixed(2)}%`
-                        : formatCurrency(value);
+                      return showYoYPercentage ? `${num.toFixed(2)}%` : formatCurrency(num);
                     }
-                    return formatCurrency(value);
+                    return formatCurrency(num);
                   }}
                   contentStyle={{
                     backgroundColor: 'var(--card)',
@@ -1631,10 +1630,7 @@ export default function HistoryPage() {
                     tickFormatter={(value) => formatCurrencyCompact(value)}
                   />
                   <Tooltip
-                    formatter={(value: number, name: string) => [
-                      formatCurrency(value),
-                      name
-                    ]}
+                    formatter={(value, name) => [formatCurrency(value as number), name]}
                     contentStyle={{
                       backgroundColor: 'var(--card)',
                       border: '1px solid var(--border)',
@@ -1712,10 +1708,7 @@ export default function HistoryPage() {
                       tickFormatter={(value) => formatCurrencyCompact(value)}
                     />
                     <Tooltip
-                      formatter={(value: number, name: string) => [
-                        formatCurrency(value),
-                        name
-                      ]}
+                      formatter={(value, name) => [formatCurrency(value as number), name]}
                       contentStyle={{
                         backgroundColor: 'var(--card)',
                         border: '1px solid var(--border)',
