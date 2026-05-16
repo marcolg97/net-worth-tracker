@@ -56,6 +56,13 @@ For architecture and current product status, see [CLAUDE.md](CLAUDE.md).
 - Use `ssr: false` for client-only dialogs and panels
 - Pass the props type parameter to preserve type safety
 
+### Dialog Form Reset Pattern
+- Dialog `useEffect` that resets form state must include `open` in its dependency array — without it, reopening the dialog for a second creation (where the guarding prop, e.g. `asset`, stays `null` between opens) leaves the effect's deps unchanged and the effect never re-fires, so stale field values persist.
+- Guard the top of the effect with `if (!open) return` — prevents a spurious reset when the dialog closes (open transitions `true → false`).
+- The `else` (new-record) branch of the reset must enumerate **every** field including optional ones (e.g. `isin`, `bondCouponRate`, `bondCouponRateSchedule`, …). Omitting a field silently carries its value across opens; only the edit branch round-trips those fields from Firestore and catches the omission.
+- Call `replaceTiers([])` (or equivalent `useFieldArray` reset) in the same branch — `reset()` does not clear field arrays.
+- **`React.ElementType` for Lucide icons in data arrays**: when storing a Lucide icon component in a typed constant array (e.g. `TYPE_CARDS`), use `React.ElementType` as the field type — NOT `(p: { className?: string }) => JSX.Element` or `React.ReactElement`. Lucide exports `ForwardRefExoticComponent`, which is not assignable to a function-call signature but is assignable to `React.ElementType`. Requires `import React from 'react'`.
+
 ### Expense Sign Convention
 - Income is stored positive
 - Expenses are stored negative

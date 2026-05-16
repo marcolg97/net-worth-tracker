@@ -33,7 +33,7 @@
  */
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -62,7 +62,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Calculator, Plus, X } from 'lucide-react';
+import { Calculator, Plus, X, BarChart3, Landmark, Bitcoin, Wallet, Home, Package, TrendingUp, ChevronLeft } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 
 /**
@@ -322,6 +322,28 @@ async function scheduleCouponDividends(
   }
 }
 
+// Auto-derives asset class from the chosen type so the user never picks both
+const TYPE_TO_CLASS: Record<AssetType, AssetClass> = {
+  stock: 'equity',
+  etf: 'equity',
+  bond: 'bonds',
+  crypto: 'crypto',
+  cash: 'cash',
+  realestate: 'realestate',
+  commodity: 'commodity',
+};
+
+// Type picker card definitions for step 1 of the create flow
+const TYPE_CARDS: { type: AssetType; label: string; title: string; Icon: React.ElementType; description: string }[] = [
+  { type: 'stock', label: 'Azione', title: 'Nuova Azione', Icon: TrendingUp, description: 'Titoli azionari quotati in borsa' },
+  { type: 'etf', label: 'ETF', title: 'Nuovo ETF', Icon: BarChart3, description: 'Fondi indicizzati diversificati' },
+  { type: 'bond', label: 'Obbligazione', title: 'Nuova Obbligazione', Icon: Landmark, description: 'Titoli di debito con cedole' },
+  { type: 'crypto', label: 'Criptovaluta', title: 'Nuova Criptovaluta', Icon: Bitcoin, description: 'Asset digitali decentralizzati' },
+  { type: 'cash', label: 'Liquidità', title: 'Nuova Liquidità', Icon: Wallet, description: 'Conti correnti e conti deposito' },
+  { type: 'realestate', label: 'Immobile', title: 'Nuovo Immobile', Icon: Home, description: 'Proprietà immobiliari' },
+  { type: 'commodity', label: 'Materia Prima', title: 'Nuova Materia Prima', Icon: Package, description: 'Oro, argento, petrolio, ecc.' },
+];
+
 // Zod validation schema for asset form
 // Note: .or(z.nan()) allows undefined values for optional numeric fields
 const assetSchema = z.object({
@@ -389,6 +411,8 @@ const assetClasses: { value: AssetClass; label: string }[] = [
 
 export function AssetDialog({ open, onClose, asset }: AssetDialogProps) {
   const { user } = useAuth();
+  const [step, setStep] = useState<1 | 2>(1);
+  const isEdit = !!asset;
   const [fetchingPrice, setFetchingPrice] = useState(false);
   const [allocationTargets, setAllocationTargets] = useState<AssetAllocationTarget | null>(null);
   const [loadingTargets, setLoadingTargets] = useState(false);
@@ -443,6 +467,15 @@ export function AssetDialog({ open, onClose, asset }: AssetDialogProps) {
     !!(watch('isin') ?? '').trim() &&
     (watch('bondNominalValue') ?? 0) > 1;
   const watchAutoUpdatePrice = watch('autoUpdatePrice');
+
+  // Field visibility based on asset type — applies to both create and edit modes.
+  const newAsset_showTicker = selectedType !== 'cash' && selectedType !== 'realestate';
+  const newAsset_showISIN = selectedType === 'stock' || selectedType === 'etf' || selectedType === 'bond';
+  const newAsset_quantityLabel = selectedType === 'cash' ? 'Saldo' : selectedType === 'realestate' ? 'Valore stimato' : 'Quantità';
+  const newAsset_showAutoUpdate = selectedType !== 'cash' && selectedType !== 'realestate';
+  const newAsset_showCostBasis = selectedType !== 'cash' && selectedType !== 'realestate';
+  const newAsset_showTER = selectedType === 'etf' || selectedType === 'stock';
+  const newAsset_showComposition = selectedType === 'etf';
 
   // Determine price source based on asset type
   const priceSource = selectedType === 'bond' && selectedAssetClass === 'bonds'
@@ -517,6 +550,11 @@ export function AssetDialog({ open, onClose, asset }: AssetDialogProps) {
   };
 
   useEffect(() => {
+    // Re-run on every open so a second "new asset" dialog starts clean.
+    // Without `open` in deps, `asset` stays null between opens and the effect never re-fires.
+    if (!open) return;
+    setStep(asset ? 2 : 1);
+
     if (asset) {
       // Determine default for isLiquid if not set
       const defaultIsLiquid = asset.isLiquid !== undefined
@@ -615,6 +653,7 @@ export function AssetDialog({ open, onClose, asset }: AssetDialogProps) {
       reset({
         ticker: '',
         name: '',
+        isin: undefined,
         type: 'etf',
         assetClass: 'equity',
         subCategory: '',
@@ -631,7 +670,15 @@ export function AssetDialog({ open, onClose, asset }: AssetDialogProps) {
         isComposite: false,
         outstandingDebt: undefined,
         isPrimaryResidence: false,
+        bondCouponRate: undefined,
+        bondCouponFrequency: undefined,
+        bondIssueDate: undefined,
+        bondMaturityDate: undefined,
+        bondNominalValue: undefined,
+        bondCouponRateSchedule: [],
+        bondFinalPremiumRate: undefined,
       });
+      replaceTiers([]);
       setComposition([]);
       setIsComposite(false);
       setHasOutstandingDebt(false);
@@ -642,7 +689,14 @@ export function AssetDialog({ open, onClose, asset }: AssetDialogProps) {
       setShowCostCalculator(false);
       setBrokerEntries([{ qty: '', price: '' }]);
     }
-  }, [asset, reset]);
+  }, [asset, reset, open]);
+
+  // Selects the asset type in step 1, auto-derives the class, and advances to step 2
+  const handleTypeSelect = (type: AssetType) => {
+    setValue('type', type);
+    setValue('assetClass', TYPE_TO_CLASS[type]);
+    setStep(2);
+  };
 
   // Get available sub-categories for the selected asset class
   const availableSubCategories = (): string[] => {
@@ -852,19 +906,65 @@ export function AssetDialog({ open, onClose, asset }: AssetDialogProps) {
       <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0">
         <DialogHeader className="px-6 pt-6 pb-4 border-b shrink-0">
           <DialogTitle>
-            {asset ? 'Modifica Asset' : 'Aggiungi Nuovo Asset'}
+            {isEdit
+              ? 'Modifica Asset'
+              : step === 1
+              ? 'Aggiungi Asset'
+              : TYPE_CARDS.find(c => c.type === selectedType)?.title ?? 'Nuovo Asset'}
           </DialogTitle>
           {/* sr-only: visually hidden but accessible to screen readers — silences Radix UI aria-describedby warning */}
           <DialogDescription className="sr-only">
-            {asset
+            {isEdit
               ? "Modifica i dettagli dell'asset selezionato."
               : 'Inserisci i dettagli del nuovo asset da aggiungere al portafoglio.'}
           </DialogDescription>
         </DialogHeader>
 
+        {/* Step 1: type picker — create mode only */}
+        {!isEdit && step === 1 && (
+          <div className="flex-1 overflow-y-auto px-6 py-6">
+            <p className="text-sm text-muted-foreground mb-5">
+              Scegli il tipo di asset da aggiungere al portafoglio
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              {TYPE_CARDS.map(({ type: t, label, Icon, description }, idx) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => handleTypeSelect(t)}
+                  className={`flex items-start gap-3 rounded-lg border border-border bg-card p-4 text-left transition-colors duration-150 ease-out hover:bg-muted/50 hover:border-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring${idx === TYPE_CARDS.length - 1 && TYPE_CARDS.length % 2 !== 0 ? ' col-span-2' : ''}`}
+                >
+                  <Icon className="h-5 w-5 mt-0.5 text-muted-foreground shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-foreground">{label}</p>
+                    <p className="text-xs text-muted-foreground leading-snug mt-0.5">{description}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Step 2: form — edit mode OR create mode after type selection */}
+        {(isEdit || step === 2) && (
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col flex-1 min-h-0">
           <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+
+          {/* Back to type picker — create mode only */}
+          {!isEdit && (
+            <button
+              type="button"
+              onClick={() => setStep(1)}
+              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors duration-150 -mt-1"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Cambia tipo
+            </button>
+          )}
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Ticker hidden for cash/realestate (no market price needed) */}
+            {newAsset_showTicker && (
             <div className="space-y-2">
               <Label htmlFor="ticker">Ticker *</Label>
               <Input
@@ -876,8 +976,9 @@ export function AssetDialog({ open, onClose, asset }: AssetDialogProps) {
                 <p className="text-sm text-red-500">{errors.ticker.message}</p>
               )}
             </div>
+            )}
 
-            <div className="space-y-2">
+            <div className={`space-y-2${!newAsset_showTicker ? ' sm:col-span-2' : ''}`}>
               <Label htmlFor="name">Nome *</Label>
               <Input
                 id="name"
@@ -890,7 +991,8 @@ export function AssetDialog({ open, onClose, asset }: AssetDialogProps) {
             </div>
           </div>
 
-          {/* ISIN Field */}
+          {/* ISIN — hidden for types that don't use it (crypto, cash, realestate, commodity) */}
+          {newAsset_showISIN && (
           <div className="space-y-2">
             <Label htmlFor="isin">ISIN</Label>
             <Input
@@ -911,7 +1013,10 @@ export function AssetDialog({ open, onClose, asset }: AssetDialogProps) {
               Necessario per dividendi automatici (azioni/ETF) e aggiornamento prezzi obbligazioni MOT
             </p>
           </div>
+          )}
 
+          {/* Type + AssetClass selects — edit mode only; in create mode these are set in step 1 */}
+          {isEdit && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="type">Tipo *</Label>
@@ -961,6 +1066,7 @@ export function AssetDialog({ open, onClose, asset }: AssetDialogProps) {
               )}
             </div>
           </div>
+          )}
 
           {isSubCategoryEnabled() && (
             <div className="space-y-2">
@@ -1049,7 +1155,8 @@ export function AssetDialog({ open, onClose, asset }: AssetDialogProps) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="quantity">Quantità *</Label>
+              {/* Label varies by type: cash = Saldo, realestate = Valore stimato, others = Quantità */}
+              <Label htmlFor="quantity">{`${newAsset_quantityLabel} *`}</Label>
               <Input
                 id="quantity"
                 type="number"
@@ -1059,19 +1166,14 @@ export function AssetDialog({ open, onClose, asset }: AssetDialogProps) {
               {errors.quantity && (
                 <p className="text-sm text-red-500">{errors.quantity.message}</p>
               )}
-              {/* Show hint when changing quantity in edit mode for non-cash assets.
-                  Quantity changes represent capital flowing in/out of the portfolio.
-                  If the money comes from/goes to outside the tracked system, a cashflow
-                  entry is needed so TWR/CAGR correctly treat it as a contribution/withdrawal
-                  rather than investment return/loss.
-                  Exception: if the counterpart is a tracked cash asset, NW stays flat and
-                  no cashflow entry is needed. */}
-              {asset && selectedAssetClass !== 'cash' && watch('quantity') > (asset.quantity ?? 0) && (
+              {/* Show hint only in edit mode — in create mode there's no previous quantity to compare.
+                  Quantity changes represent capital flowing in/out of the portfolio. */}
+              {isEdit && asset && selectedAssetClass !== 'cash' && watch('quantity') > (asset.quantity ?? 0) && (
                 <p className="text-xs text-amber-600 dark:text-amber-400">
                   Hai investito nuovo capitale? Se i fondi provengono dall&apos;esterno del portafoglio tracciato, registra un&apos;entrata nel cashflow per mantenere le metriche di performance accurate.
                 </p>
               )}
-              {asset && selectedAssetClass !== 'cash' && watch('quantity') < (asset.quantity ?? 0) && (
+              {isEdit && asset && selectedAssetClass !== 'cash' && watch('quantity') < (asset.quantity ?? 0) && (
                 <p className="text-xs text-amber-600 dark:text-amber-400">
                   Hai venduto questo asset? Se il ricavato è uscito dal portafoglio tracciato, registra un&apos;uscita nel cashflow per mantenere le metriche di performance accurate.
                 </p>
@@ -1096,7 +1198,8 @@ export function AssetDialog({ open, onClose, asset }: AssetDialogProps) {
             </div>
           </div>
 
-          {/* Aggiornamento Automatico Prezzo */}
+          {/* autoUpdatePrice — hidden for cash/realestate (they don't use market prices) */}
+          {newAsset_showAutoUpdate && (
           <div className="space-y-2 rounded-lg border p-4">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
@@ -1112,8 +1215,10 @@ export function AssetDialog({ open, onClose, asset }: AssetDialogProps) {
               />
             </div>
           </div>
+          )}
 
-          {/* Composizione */}
+          {/* Composizione — only shown for ETF */}
+          {newAsset_showComposition && (
           <div className="space-y-2 rounded-lg border p-4">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
@@ -1229,6 +1334,7 @@ export function AssetDialog({ open, onClose, asset }: AssetDialogProps) {
               </div>
             )}
           </div>
+          )}
 
           {/* Debito Residuo - solo per immobili */}
           {selectedType === 'realestate' && selectedAssetClass === 'realestate' && (
@@ -1558,7 +1664,8 @@ export function AssetDialog({ open, onClose, asset }: AssetDialogProps) {
             </div>
           )}
 
-          {/* Cost Basis Tracking */}
+          {/* Cost Basis Tracking — hidden for cash/realestate (no capital gains) */}
+          {newAsset_showCostBasis && (
           <div className="space-y-2 rounded-lg border p-4">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
@@ -1749,8 +1856,10 @@ export function AssetDialog({ open, onClose, asset }: AssetDialogProps) {
               </div>
             )}
           </div>
+          )}
 
-          {/* TER (Total Expense Ratio) */}
+          {/* TER — only shown for ETF and stock */}
+          {newAsset_showTER && (
           <div className="space-y-2 rounded-lg border p-4">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
@@ -1792,6 +1901,7 @@ export function AssetDialog({ open, onClose, asset }: AssetDialogProps) {
               </div>
             )}
           </div>
+          )}
 
           {/* Stamp duty exemption (imposta di bollo) */}
           <div className="flex items-center justify-between rounded-lg border p-4">
@@ -1868,6 +1978,7 @@ export function AssetDialog({ open, onClose, asset }: AssetDialogProps) {
             </Button>
           </div>
         </form>
+        )}
       </DialogContent>
     </Dialog>
   );
