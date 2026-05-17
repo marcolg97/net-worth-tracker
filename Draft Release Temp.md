@@ -60,3 +60,8 @@
 ## 📚 Documentation
 
 - Updated SETUP.md, VERCEL_SETUP.md, and DOCKER.md with Resend configuration instructions and notes on sender domain limitations (shared domain vs custom domain)
+
+## 🏗️ Technical
+
+- Migrated all React Hook Form `watch()` calls to `useWatch()` across the four main form dialogs (Add/Edit Asset, Add/Edit Expense, Category Management, Dividend) — makes these components fully compatible with the React 19 Compiler, which can now memoize them automatically instead of skipping them entirely. In practice this means fewer re-renders on every keystroke or toggle in these dialogs, particularly noticeable on mobile
+- Fixed missing accessible description on the Add/Edit Dividend dialog (Radix `DialogDescription` warning)

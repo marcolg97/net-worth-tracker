@@ -26,7 +26,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, Controller, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useQueryClient } from '@tanstack/react-query';
@@ -200,10 +200,6 @@ interface ExpenseDialogProps {
 // ---------------------------------------------------------------------------
 
 export function ExpenseDialog({ open, onClose, expense, onSuccess }: ExpenseDialogProps) {
-  // React Hook Form's watch() is incompatible with React Compiler memoization.
-  // Explicitly opt out so the compiler skips this component without warnings.
-  "use no memo";
-
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const prefersReducedMotion = useReducedMotion();
@@ -230,7 +226,6 @@ export function ExpenseDialog({ open, onClose, expense, onSuccess }: ExpenseDial
     handleSubmit,
     reset,
     setValue,
-    watch,
     getValues,
     control,
     formState: { errors, isSubmitting },
@@ -250,17 +245,17 @@ export function ExpenseDialog({ open, onClose, expense, onSuccess }: ExpenseDial
     },
   });
 
-  const selectedType = watch('type');
-  const selectedCategoryId = watch('categoryId');
-  const selectedIsRecurring = watch('isRecurring');
-  const selectedDate = watch('date');
-  const watchedIsInstallment = watch('isInstallment');
-  const watchedInstallmentCount = watch('installmentCount');
-  const watchedInstallmentTotalAmount = watch('installmentTotalAmount');
-  const watchedInstallmentStartDate = watch('installmentStartDate');
-  const watchedInstallmentAmounts = watch('installmentAmounts');
-  const watchedLinkedCashAssetId = watch('linkedCashAssetId');
-  const watchedSubCategoryId = watch('subCategoryId');
+  const selectedType = useWatch({ control, name: 'type' });
+  const selectedCategoryId = useWatch({ control, name: 'categoryId' });
+  const selectedIsRecurring = useWatch({ control, name: 'isRecurring' });
+  const selectedDate = useWatch({ control, name: 'date' });
+  const watchedIsInstallment = useWatch({ control, name: 'isInstallment' });
+  const watchedInstallmentCount = useWatch({ control, name: 'installmentCount' });
+  const watchedInstallmentTotalAmount = useWatch({ control, name: 'installmentTotalAmount' });
+  const watchedInstallmentStartDate = useWatch({ control, name: 'installmentStartDate' });
+  const watchedInstallmentAmounts = useWatch({ control, name: 'installmentAmounts' });
+  const watchedLinkedCashAssetId = useWatch({ control, name: 'linkedCashAssetId' });
+  const watchedSubCategoryId = useWatch({ control, name: 'subCategoryId' });
 
   const isEdit = !!expense;
 

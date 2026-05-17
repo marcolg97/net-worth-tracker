@@ -34,7 +34,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useForm, useFieldArray, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useAuth } from '@/contexts/AuthContext';
@@ -433,7 +433,6 @@ export function AssetDialog({ open, onClose, asset }: AssetDialogProps) {
     handleSubmit,
     reset,
     setValue,
-    watch,
     control,
     formState: { errors, isSubmitting },
   } = useForm<AssetFormValues>({
@@ -454,19 +453,32 @@ export function AssetDialog({ open, onClose, asset }: AssetDialogProps) {
     name: 'bondCouponRateSchedule',
   });
 
-  const selectedType = watch('type');
-  const selectedAssetClass = watch('assetClass');
-  const selectedSubCategory = watch('subCategory');
-  const watchIsLiquid = watch('isLiquid');
+  const selectedType = useWatch({ control, name: 'type' });
+  const selectedAssetClass = useWatch({ control, name: 'assetClass' });
+  const selectedSubCategory = useWatch({ control, name: 'subCategory' });
+  const watchIsLiquid = useWatch({ control, name: 'isLiquid' });
+  const watchAutoUpdatePrice = useWatch({ control, name: 'autoUpdatePrice' });
+  const watchIsComposite = useWatch({ control, name: 'isComposite' });
+  const watchQuantity = useWatch({ control, name: 'quantity' });
+  const watchCurrency = useWatch({ control, name: 'currency' });
+  const watchIsin = useWatch({ control, name: 'isin' });
+  const watchBondNominalValue = useWatch({ control, name: 'bondNominalValue' });
+  const watchBondCouponRate = useWatch({ control, name: 'bondCouponRate' });
+  const watchBondCouponFrequency = useWatch({ control, name: 'bondCouponFrequency' });
+  const watchBondFinalPremiumRate = useWatch({ control, name: 'bondFinalPremiumRate' });
+  const watchAverageCost = useWatch({ control, name: 'averageCost' });
+  const watchIsPrimaryResidence = useWatch({ control, name: 'isPrimaryResidence' });
+  const watchStampDutyExempt = useWatch({ control, name: 'stampDutyExempt' });
+  const watchIncludeInHistoryTables = useWatch({ control, name: 'includeInHistoryTables' });
+
   // True when the bond qualifies for % of par ↔ EUR conversion:
   // must have ISIN (triggers Borsa Italiana pricing) AND nominalValue > 1.
   // Used to conditionally show % labels and apply the conversion on save.
   const isBondPctMode =
     selectedType === 'bond' &&
     selectedAssetClass === 'bonds' &&
-    !!(watch('isin') ?? '').trim() &&
-    (watch('bondNominalValue') ?? 0) > 1;
-  const watchAutoUpdatePrice = watch('autoUpdatePrice');
+    !!(watchIsin ?? '').trim() &&
+    (watchBondNominalValue ?? 0) > 1;
 
   // Field visibility based on asset type — applies to both create and edit modes.
   const newAsset_showTicker = selectedType !== 'cash' && selectedType !== 'realestate';
@@ -481,8 +493,6 @@ export function AssetDialog({ open, onClose, asset }: AssetDialogProps) {
   const priceSource = selectedType === 'bond' && selectedAssetClass === 'bonds'
     ? 'Borsa Italiana'
     : 'Yahoo Finance';
-  const watchIsComposite = watch('isComposite');
-
   // Set intelligent defaults for isLiquid and autoUpdatePrice based on asset class
   // Why intelligent defaults? Reduces user errors and form friction.
   // - Equity/bonds → liquid, auto-update enabled (traded on markets)
@@ -1112,7 +1122,7 @@ export function AssetDialog({ open, onClose, asset }: AssetDialogProps) {
                 // __create_new__ is a sentinel value — intercepted in onValueChange
                 // to open the inline creation form instead of setting the field.
                 <Select
-                  value={watch('subCategory')}
+                  value={selectedSubCategory}
                   onValueChange={(value) => {
                     if (value === '__create_new__') {
                       setShowNewSubCategory(true);
@@ -1168,12 +1178,12 @@ export function AssetDialog({ open, onClose, asset }: AssetDialogProps) {
               )}
               {/* Show hint only in edit mode — in create mode there's no previous quantity to compare.
                   Quantity changes represent capital flowing in/out of the portfolio. */}
-              {isEdit && asset && selectedAssetClass !== 'cash' && watch('quantity') > (asset.quantity ?? 0) && (
+              {isEdit && asset && selectedAssetClass !== 'cash' && (watchQuantity ?? 0) > (asset.quantity ?? 0) && (
                 <p className="text-xs text-amber-600 dark:text-amber-400">
                   Hai investito nuovo capitale? Se i fondi provengono dall&apos;esterno del portafoglio tracciato, registra un&apos;entrata nel cashflow per mantenere le metriche di performance accurate.
                 </p>
               )}
-              {isEdit && asset && selectedAssetClass !== 'cash' && watch('quantity') < (asset.quantity ?? 0) && (
+              {isEdit && asset && selectedAssetClass !== 'cash' && (watchQuantity ?? 0) < (asset.quantity ?? 0) && (
                 <p className="text-xs text-amber-600 dark:text-amber-400">
                   Hai venduto questo asset? Se il ricavato è uscito dal portafoglio tracciato, registra un&apos;uscita nel cashflow per mantenere le metriche di performance accurate.
                 </p>
@@ -1192,7 +1202,7 @@ export function AssetDialog({ open, onClose, asset }: AssetDialogProps) {
               </div>
               <Switch
                 id="isLiquid"
-                checked={watch('isLiquid')}
+                checked={watchIsLiquid}
                 onCheckedChange={(checked) => setValue('isLiquid', checked)}
               />
             </div>
@@ -1210,7 +1220,7 @@ export function AssetDialog({ open, onClose, asset }: AssetDialogProps) {
               </div>
               <Switch
                 id="autoUpdatePrice"
-                checked={watch('autoUpdatePrice')}
+                checked={watchAutoUpdatePrice}
                 onCheckedChange={(checked) => setValue('autoUpdatePrice', checked)}
               />
             </div>
@@ -1229,7 +1239,7 @@ export function AssetDialog({ open, onClose, asset }: AssetDialogProps) {
               </div>
               <Switch
                 id="isComposite"
-                checked={watch('isComposite')}
+                checked={watchIsComposite}
                 onCheckedChange={(checked) => setValue('isComposite', checked)}
               />
             </div>
@@ -1360,7 +1370,7 @@ export function AssetDialog({ open, onClose, asset }: AssetDialogProps) {
 
               {hasOutstandingDebt && (
                 <div className="mt-4 space-y-2">
-                  <Label htmlFor="outstandingDebt">Importo Debito Residuo ({watch('currency')})</Label>
+                  <Label htmlFor="outstandingDebt">Importo Debito Residuo ({watchCurrency})</Label>
                   <Input
                     id="outstandingDebt"
                     type="number"
@@ -1393,7 +1403,7 @@ export function AssetDialog({ open, onClose, asset }: AssetDialogProps) {
                 </div>
                 <Switch
                   id="isPrimaryResidence"
-                  checked={watch('isPrimaryResidence')}
+                  checked={watchIsPrimaryResidence}
                   onCheckedChange={(checked) => setValue('isPrimaryResidence', checked)}
                 />
               </div>
@@ -1450,7 +1460,7 @@ export function AssetDialog({ open, onClose, asset }: AssetDialogProps) {
                     <div className="space-y-2">
                       <Label htmlFor="bondCouponFrequency">Periodicità Cedole</Label>
                       <Select
-                        value={watch('bondCouponFrequency') || ''}
+                        value={watchBondCouponFrequency || ''}
                         onValueChange={(value) => setValue('bondCouponFrequency', value as CouponFrequency)}
                       >
                         <SelectTrigger>
@@ -1495,7 +1505,7 @@ export function AssetDialog({ open, onClose, asset }: AssetDialogProps) {
 
                   <div className="space-y-2">
                     <Label htmlFor="bondNominalValue">
-                      Valore Nominale per Unità ({watch('currency')}){' '}
+                      Valore Nominale per Unità ({watchCurrency}){' '}
                       <span className="text-gray-400 dark:text-gray-500 font-normal">(opzionale)</span>
                     </Label>
                     <Input
@@ -1511,10 +1521,10 @@ export function AssetDialog({ open, onClose, asset }: AssetDialogProps) {
                     )}
                     {/* Dynamic coupon preview based on current form values */}
                     {(() => {
-                      const rate = watch('bondCouponRate');
-                      const freq = watch('bondCouponFrequency');
-                      const nominal = watch('bondNominalValue');
-                      const qty = watch('quantity');
+                      const rate = watchBondCouponRate;
+                      const freq = watchBondCouponFrequency;
+                      const nominal = watchBondNominalValue;
+                      const qty = watchQuantity;
                       const periodsMap: Record<string, number> = { monthly: 12, quarterly: 4, semiannual: 2, annual: 1 };
                       const periods = freq ? periodsMap[freq] : null;
                       if (rate && !isNaN(rate) && periods && nominal && !isNaN(nominal) && nominal > 0 && qty > 0) {
@@ -1522,7 +1532,7 @@ export function AssetDialog({ open, onClose, asset }: AssetDialogProps) {
                         const total = perShare * qty;
                         return (
                           <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">
-                            → Cedola stimata: {perShare.toFixed(2)} {watch('currency')}/unità × {qty} = {total.toFixed(2)} {watch('currency')} per pagamento
+                            → Cedola stimata: {perShare.toFixed(2)} {watchCurrency}/unità × {qty} = {total.toFixed(2)} {watchCurrency} per pagamento
                           </p>
                         );
                       }
@@ -1640,15 +1650,15 @@ export function AssetDialog({ open, onClose, asset }: AssetDialogProps) {
                       <p className="text-sm text-red-500">{errors.bondFinalPremiumRate.message}</p>
                     )}
                     {(() => {
-                      const premRate = watch('bondFinalPremiumRate');
-                      const nominal = watch('bondNominalValue');
-                      const qty = watch('quantity');
+                      const premRate = watchBondFinalPremiumRate;
+                      const nominal = watchBondNominalValue;
+                      const qty = watchQuantity;
                       if (premRate && !isNaN(premRate) && nominal && !isNaN(nominal) && nominal > 0 && qty > 0) {
                         const perShare = (premRate / 100) * nominal;
                         const total = perShare * qty;
                         return (
                           <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">
-                            → Premio stimato: {perShare.toFixed(2)} {watch('currency')}/unità × {qty} = {total.toFixed(2)} {watch('currency')} alla scadenza
+                            → Premio stimato: {perShare.toFixed(2)} {watchCurrency}/unità × {qty} = {total.toFixed(2)} {watchCurrency} alla scadenza
                           </p>
                         );
                       }
@@ -1695,7 +1705,7 @@ export function AssetDialog({ open, onClose, asset }: AssetDialogProps) {
                       <Label htmlFor="averageCost">
                         {isBondPctMode
                           ? 'Prezzo di Carico (quotazione Borsa Italiana)'
-                          : `Costo Medio per Azione (${watch('currency')})`}
+                          : `Costo Medio per Azione (${watchCurrency})`}
                       </Label>
                       <button
                         type="button"
@@ -1728,8 +1738,8 @@ export function AssetDialog({ open, onClose, asset }: AssetDialogProps) {
                         : 'Il costo medio di acquisto per singola azione/unità'}
                     </p>
                     {isBondPctMode && (() => {
-                      const biPrice = watch('averageCost');
-                      const nominal = watch('bondNominalValue');
+                      const biPrice = watchAverageCost;
+                      const nominal = watchBondNominalValue;
                       if (!biPrice || isNaN(biPrice) || !nominal) return null;
                       const eurVal = biPrice * (nominal / 100);
                       return (
@@ -1796,7 +1806,7 @@ export function AssetDialog({ open, onClose, asset }: AssetDialogProps) {
                               type="number"
                               step="0.0001"
                               min="0"
-                              placeholder={isBondPctMode ? 'Prezzo BI' : `Prezzo (${watch('currency')})`}
+                              placeholder={isBondPctMode ? 'Prezzo BI' : `Prezzo (${watchCurrency})`}
                               value={entry.price}
                               onChange={(e) => {
                                 const updated = [...brokerEntries];
@@ -1835,7 +1845,7 @@ export function AssetDialog({ open, onClose, asset }: AssetDialogProps) {
                           <div className="flex items-center gap-3">
                             <span className="text-sm font-semibold">
                               PMC: {avg.toLocaleString('it-IT', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}
-                              {isBondPctMode ? '' : ` ${watch('currency')}`}
+                              {isBondPctMode ? '' : ` ${watchCurrency}`}
                             </span>
                             <button
                               type="button"
@@ -1913,7 +1923,7 @@ export function AssetDialog({ open, onClose, asset }: AssetDialogProps) {
             </div>
             <Switch
               id="stampDutyExempt"
-              checked={!!watch('stampDutyExempt')}
+              checked={!!watchStampDutyExempt}
               onCheckedChange={(checked) => setValue('stampDutyExempt', checked)}
             />
           </div>
@@ -1928,7 +1938,7 @@ export function AssetDialog({ open, onClose, asset }: AssetDialogProps) {
             </div>
             <Switch
               id="includeInHistoryTables"
-              checked={!!watch('includeInHistoryTables')}
+              checked={!!watchIncludeInHistoryTables}
               onCheckedChange={(checked) => setValue('includeInHistoryTables', checked)}
             />
           </div>
