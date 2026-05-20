@@ -22,7 +22,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Wallet, TrendingUp, PieChart, DollarSign, Camera, TrendingDown, Receipt, Loader2 } from 'lucide-react';
+import { Wallet, TrendingUp, Camera, TrendingDown, Receipt, ChevronDown } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { toast } from 'sonner';
 import { useCreateSnapshot } from '@/lib/hooks/useSnapshots';
 import { useDashboardOverview } from '@/lib/hooks/useDashboardOverview';
@@ -32,6 +33,7 @@ import { getItalyDate, getItalyMonthYear } from '@/lib/utils/dateHelpers';
 import { getGreeting } from '@/lib/utils/getGreeting';
 import { OverviewAnimatedCurrency } from '@/components/dashboard/OverviewAnimatedCurrency';
 import { OverviewChartsSection } from '@/components/dashboard/OverviewChartsSection';
+import { NetWorthSparkline } from '@/components/dashboard/NetWorthSparkline';
 import { useChartColors } from '@/lib/hooks/useChartColors';
 import { useDemoMode } from '@/lib/hooks/useDemoMode';
 
@@ -72,6 +74,8 @@ export default function DashboardPage() {
 
   const [creatingSnapshot, setCreatingSnapshot] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  // Cost basis detail starts open — user can collapse to reduce visual density
+  const [costBasisOpen, setCostBasisOpen] = useState(true);
   const [snapshotDialogStyle, setSnapshotDialogStyle] = useState<CSSProperties | undefined>(undefined);
   const snapshotButtonRef = useRef<HTMLButtonElement | null>(null);
   const snapshotDialogRef = useRef<HTMLDivElement | null>(null);
@@ -235,8 +239,43 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      <div className="space-y-6 max-desktop:portrait:pb-20">
+        {/* Header skeleton */}
+        <div className="pb-4 border-b border-border">
+          <div className="h-3 w-20 bg-muted rounded animate-pulse mb-2" />
+          <div className="h-8 w-56 bg-muted rounded animate-pulse mb-2" />
+          <div className="h-4 w-44 bg-muted rounded animate-pulse" />
+        </div>
+        {/* Hero card skeleton */}
+        <div className="rounded-xl border border-border bg-card px-6 py-6">
+          <div className="h-3 w-40 bg-muted rounded animate-pulse mb-4" />
+          <div className="h-12 w-52 bg-muted rounded animate-pulse mb-4" />
+          <div className="flex gap-2">
+            <div className="h-6 w-36 bg-muted rounded animate-pulse" />
+            <div className="h-6 w-24 bg-muted rounded animate-pulse" />
+          </div>
+        </div>
+        {/* Secondary KPI skeleton */}
+        <div className="rounded-xl border border-border bg-card px-6 py-6">
+          <div className="h-3 w-36 bg-muted rounded animate-pulse mb-3" />
+          <div className="h-8 w-44 bg-muted rounded animate-pulse" />
+        </div>
+        {/* Cashflow skeleton */}
+        <div className="rounded-xl border border-border bg-card px-6 py-6">
+          <div className="h-3 w-40 bg-muted rounded animate-pulse mb-5" />
+          <div className="grid grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <div className="h-3 w-16 bg-muted rounded animate-pulse" />
+              <div className="h-8 w-28 bg-muted rounded animate-pulse" />
+              <div className="h-3 w-24 bg-muted rounded animate-pulse" />
+            </div>
+            <div className="space-y-2">
+              <div className="h-3 w-12 bg-muted rounded animate-pulse" />
+              <div className="h-8 w-28 bg-muted rounded animate-pulse" />
+              <div className="h-3 w-24 bg-muted rounded animate-pulse" />
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -292,18 +331,20 @@ export default function DashboardPage() {
         className="space-y-4"
       >
 
-        {/* Hero card — full-width, dominant number */}
+        {/* Hero card — full-width, dominant number.
+            No side-stripe border (banned by design system); the card's natural
+            border + shadow provide sufficient separation. Variation chips live
+            inline so the user gets trend context without scrolling past the hero. */}
         <motion.div
           layout="position"
           transition={springLayoutTransition}
           variants={heroMetricSettle}
         >
-          <Card className="border-l-4 border-l-primary">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Patrimonio Totale Lordo</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
+          <Card>
             <CardContent>
+              <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-3">
+                Patrimonio Totale Lordo
+              </p>
               {/* animateOnMount=true — hero is the primary KPI, animates once on load.
                   onSettled triggers heroSettled so OverviewChartsSection can schedule
                   chart mount via requestIdleCallback after the animation completes. */}
@@ -311,62 +352,74 @@ export default function DashboardPage() {
                 value={overview?.metrics.totalValue ?? 0}
                 animateOnMount={true}
                 onSettled={handleHeroSettled}
-                className="text-3xl font-bold desktop:text-4xl"
+                className="text-4xl font-bold tracking-tight desktop:text-5xl"
               />
-              <p className="text-xs text-muted-foreground mt-1">
+              {/* Variation chips — monthly and YTD changes inline under the number.
+                  Only rendered when snapshot data is available (at least one prior month). */}
+              <div className="mt-3 flex flex-wrap gap-2">
+                {overview?.variations.monthly && (
+                  <span className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium ${
+                    overview.variations.monthly.value >= 0
+                      ? 'bg-green-500/10 text-green-600 dark:text-green-400'
+                      : 'bg-red-500/10 text-red-600 dark:text-red-400'
+                  }`}>
+                    {overview.variations.monthly.value >= 0
+                      ? <TrendingUp className="h-3 w-3" />
+                      : <TrendingDown className="h-3 w-3" />
+                    }
+                    {overview.variations.monthly.value >= 0 ? '+' : ''}{formatCurrency(overview.variations.monthly.value)}{' '}
+                    ({overview.variations.monthly.percentage >= 0 ? '+' : ''}{overview.variations.monthly.percentage.toFixed(2)}%) questo mese
+                  </span>
+                )}
+                {overview?.variations.yearly && (
+                  <span className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium ${
+                    overview.variations.yearly.value >= 0
+                      ? 'bg-green-500/10 text-green-600 dark:text-green-400'
+                      : 'bg-red-500/10 text-red-600 dark:text-red-400'
+                  }`}>
+                    {overview.variations.yearly.value >= 0
+                      ? <TrendingUp className="h-3 w-3" />
+                      : <TrendingDown className="h-3 w-3" />
+                    }
+                    {overview.variations.yearly.value >= 0 ? '+' : ''}{formatCurrency(overview.variations.yearly.value)}{' '}
+                    ({overview.variations.yearly.percentage >= 0 ? '+' : ''}{overview.variations.yearly.percentage.toFixed(2)}%) YTD
+                  </span>
+                )}
+              </div>
+              {/* Sparkline — 3-month net worth trend for visual context under the chips.
+                  Renders only when at least 2 historical snapshots are available. */}
+              {overview?.sparklineData && overview.sparklineData.length >= 2 && (
+                <div className="mt-3 -mx-1 opacity-70">
+                  <NetWorthSparkline data={overview.sparklineData} />
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground mt-2">
                 {(overview?.flags.assetCount ?? 0) === 0
-                  ? 'Aggiungi assets per iniziare'
-                  : `${overview?.flags.assetCount ?? 0} asset${(overview?.flags.assetCount ?? 0) !== 1 ? 's' : ''}`}
+                  ? 'Aggiungi asset per iniziare'
+                  : `${overview?.flags.assetCount ?? 0} asset in portafoglio`}
               </p>
             </CardContent>
           </Card>
         </motion.div>
 
-        {/* Secondary KPI row — 2-col at sm+; these contextualize the hero number */}
-        <motion.div
-          layout="position"
-          transition={springLayoutTransition}
-          className="grid gap-4 sm:grid-cols-2"
-        >
-          <motion.div layout="position" transition={springLayoutTransition} variants={cardItem}>
-            <Card className="h-full">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Patrimonio Liquido Lordo</CardTitle>
-                <Wallet className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <OverviewAnimatedCurrency
-                  value={overview?.metrics.liquidNetWorth ?? 0}
-                  animateOnMount={true}
-                  startDelay={105}
-                  duration={390}
-                  className="text-2xl font-bold"
-                />
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          <motion.div layout="position" transition={springLayoutTransition} variants={cardItem}>
-            <Card className="h-full">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Numero Assets</CardTitle>
-                <PieChart className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <OverviewAnimatedCurrency
-                  value={overview?.flags.assetCount ?? 0}
-                  animateOnMount={true}
-                  format="integer"
-                  startDelay={105}
-                  duration={390}
-                  className="text-2xl font-bold"
-                />
-                <p className="text-xs text-muted-foreground">
-                  {(overview?.flags.assetCount ?? 0) === 0 ? 'Nessun asset presente' : 'Asset in portafoglio'}
-                </p>
-              </CardContent>
-            </Card>
-          </motion.div>
+        {/* Secondary KPI — Patrimonio Liquido full-width; asset count is already
+            surfaced as a caption below the hero number, no need for a separate card. */}
+        <motion.div layout="position" transition={springLayoutTransition} variants={cardItem}>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Patrimonio Liquido Lordo</CardTitle>
+              <Wallet className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <OverviewAnimatedCurrency
+                value={overview?.metrics.liquidNetWorth ?? 0}
+                animateOnMount={true}
+                startDelay={105}
+                duration={390}
+                className="text-2xl font-bold"
+              />
+            </CardContent>
+          </Card>
         </motion.div>
 
       </motion.section>
@@ -376,280 +429,222 @@ export default function DashboardPage() {
         {overview?.flags.hasCostBasisTracking && (
           <motion.div
             key="cost-basis-section"
-            layout
+            layout="position"
             transition={springLayoutTransition}
             variants={slideDown}
             initial="hidden"
             animate="visible"
             exit="exit"
-            className="space-y-6"
           >
-            {/* Net Worth Cards */}
-            <motion.div
-              layout="position"
-              transition={springLayoutTransition}
-              variants={staggerContainer}
-              initial="hidden"
-              animate="visible"
-              className="grid gap-6 md:grid-cols-2"
-            >
-              <motion.div layout="position" transition={springLayoutTransition} variants={cardItem}>
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Patrimonio Totale Netto</CardTitle>
-                    <DollarSign className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    {/* animateOnMount=true — second primary KPI per step-2 spec.
-                        No onSettled here; hero (Lordo) already drives the settled signal. */}
-                    <OverviewAnimatedCurrency
-                      value={overview.metrics.netTotal}
-                      animateOnMount={true}
-                      startDelay={125}
-                      duration={380}
-                      className="text-2xl font-bold text-blue-600"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Dopo tasse stimate
-                    </p>
-                  </CardContent>
-                </Card>
-              </motion.div>
+            {/* Collapsible header — clicking toggles visibility of the 4 fiscal detail cards.
+                CollapsibleTrigger asChild avoids nested <button> inside the div trigger. */}
+            <Collapsible open={costBasisOpen} onOpenChange={setCostBasisOpen}>
+              <CollapsibleTrigger asChild>
+                <div className="flex items-center justify-between cursor-pointer select-none mb-4 group">
+                  <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+                    Dettaglio Fiscale
+                  </p>
+                  <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 motion-reduce:transition-none group-data-[state=open]:rotate-180" />
+                </div>
+              </CollapsibleTrigger>
 
-              <motion.div layout="position" transition={springLayoutTransition} variants={cardItem}>
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Patrimonio Liquido Netto</CardTitle>
-                    <Wallet className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <OverviewAnimatedCurrency
-                      value={overview.metrics.liquidNetTotal}
-                      animateOnMount={true}
-                      startDelay={140}
-                      duration={380}
-                      className="text-2xl font-bold text-blue-600"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Liquidità dopo tasse stimate
-                    </p>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            </motion.div>
+              <CollapsibleContent className="space-y-6">
+                {/* Net Worth Cards */}
+                <motion.div
+                  layout="position"
+                  transition={springLayoutTransition}
+                  variants={staggerContainer}
+                  initial="hidden"
+                  animate="visible"
+                  className="grid gap-6 sm:grid-cols-2"
+                >
+                  <motion.div layout="position" transition={springLayoutTransition} variants={cardItem}>
+                    <Card>
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Patrimonio Totale Netto</CardTitle>
+                        <Wallet className="h-4 w-4 text-muted-foreground" />
+                      </CardHeader>
+                      <CardContent>
+                        {/* No onSettled here; hero (Lordo) already drives the settled signal. */}
+                        <OverviewAnimatedCurrency
+                          value={overview.metrics.netTotal}
+                          animateOnMount={true}
+                          startDelay={125}
+                          duration={380}
+                          className="text-2xl font-bold"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Dopo tasse stimate
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
 
-            {/* Gains and Taxes Cards */}
-            <motion.div
-              layout="position"
-              transition={springLayoutTransition}
-              variants={staggerContainer}
-              initial="hidden"
-              animate="visible"
-              className="grid gap-6 md:grid-cols-2"
-            >
-              <motion.div layout="position" transition={springLayoutTransition} variants={cardItem}>
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Plusvalenze Non Realizzate</CardTitle>
-                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className={`text-2xl font-bold ${
-                      overview.metrics.unrealizedGains >= 0 ? 'text-green-600' : 'text-red-600'
-                    }`}>
-                      {overview.metrics.unrealizedGains >= 0 ? '+' : ''}
-                      <OverviewAnimatedCurrency
-                        value={overview.metrics.unrealizedGains}
-                        animateOnMount={true}
-                        startDelay={155}
-                        duration={380}
-                      />
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Guadagno/perdita rispetto al costo medio
-                    </p>
-                  </CardContent>
-                </Card>
-              </motion.div>
+                  <motion.div layout="position" transition={springLayoutTransition} variants={cardItem}>
+                    <Card>
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Patrimonio Liquido Netto</CardTitle>
+                        <Wallet className="h-4 w-4 text-muted-foreground" />
+                      </CardHeader>
+                      <CardContent>
+                        <OverviewAnimatedCurrency
+                          value={overview.metrics.liquidNetTotal}
+                          animateOnMount={true}
+                          startDelay={140}
+                          duration={380}
+                          className="text-2xl font-bold"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Liquidità dopo tasse stimate
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                </motion.div>
 
-              <motion.div layout="position" transition={springLayoutTransition} variants={cardItem}>
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Tasse Stimate</CardTitle>
-                    <Receipt className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <OverviewAnimatedCurrency
-                      value={overview.metrics.estimatedTaxes}
-                      animateOnMount={true}
-                      startDelay={170}
-                      duration={380}
-                      className="text-2xl font-bold text-orange-600"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Imposte su plusvalenze non realizzate
-                    </p>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            </motion.div>
+                {/* Gains and Taxes Cards */}
+                <motion.div
+                  layout="position"
+                  transition={springLayoutTransition}
+                  variants={staggerContainer}
+                  initial="hidden"
+                  animate="visible"
+                  className="grid gap-6 sm:grid-cols-2"
+                >
+                  <motion.div layout="position" transition={springLayoutTransition} variants={cardItem}>
+                    <Card>
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Plusvalenze Non Realizzate</CardTitle>
+                        <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                      </CardHeader>
+                      <CardContent>
+                        <div className={`text-2xl font-bold ${
+                          overview.metrics.unrealizedGains >= 0 ? 'text-green-600' : 'text-red-600'
+                        }`}>
+                          {overview.metrics.unrealizedGains >= 0 ? '+' : ''}
+                          <OverviewAnimatedCurrency
+                            value={overview.metrics.unrealizedGains}
+                            animateOnMount={true}
+                            startDelay={155}
+                            duration={380}
+                          />
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Guadagno/perdita rispetto al costo medio
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+
+                  <motion.div layout="position" transition={springLayoutTransition} variants={cardItem}>
+                    <Card>
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Tasse Stimate</CardTitle>
+                        <Receipt className="h-4 w-4 text-muted-foreground" />
+                      </CardHeader>
+                      <CardContent>
+                        <OverviewAnimatedCurrency
+                          value={overview.metrics.estimatedTaxes}
+                          animateOnMount={true}
+                          startDelay={170}
+                          duration={380}
+                          className="text-2xl font-bold text-amber-600 dark:text-amber-400"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Imposte su plusvalenze non realizzate
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                </motion.div>
+              </CollapsibleContent>
+            </Collapsible>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Secondary metrics group — tighter internal spacing (space-y-4) vs the
-          space-y-6 page-level gap groups these three clusters visually together,
-          subordinating them to the hero above and the composition zone below */}
+      {/* Secondary metrics group — cashflow card + optional cost section.
+          Variations moved inline to the hero; this group now handles cashflow
+          context and portfolio cost references. */}
       <motion.div
         layout="position"
         transition={springLayoutTransition}
         className="space-y-4"
       >
 
-      {/* Variazioni Cards */}
+      {/* Cashflow mensile — income and expenses in one card so the user can
+          compare them at a glance without scrolling between two separate cards. */}
       <motion.div
         layout="position"
         transition={springLayoutTransition}
-        variants={staggerContainer}
+        variants={cardItem}
         initial="hidden"
         animate="visible"
-        className="grid gap-6 md:grid-cols-2"
       >
-        <motion.div layout="position" transition={springLayoutTransition} variants={cardItem}>
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Variazione Mensile</CardTitle>
-            {overview?.variations.monthly && overview.variations.monthly.value < 0
-              ? <TrendingDown className="h-4 w-4 text-red-500" />
-              : <TrendingUp className="h-4 w-4 text-green-500" />
-            }
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+            <CardTitle className="text-sm font-medium">Cashflow Questo Mese</CardTitle>
           </CardHeader>
-          <CardContent>
-            {overview?.variations.monthly ? (
-              <>
-                <div className={`text-2xl font-bold ${
-                  overview.variations.monthly.value >= 0 ? 'text-green-600' : 'text-red-600'
-                }`}>
-                  {overview.variations.monthly.value >= 0 ? '+' : ''}{formatCurrency(overview.variations.monthly.value)}
-                </div>
-                <p className={`text-xs ${
-                  overview.variations.monthly.percentage >= 0 ? 'text-green-600' : 'text-red-600'
-                }`}>
-                  {overview.variations.monthly.percentage >= 0 ? '+' : ''}{overview.variations.monthly.percentage.toFixed(2)}%
-                </p>
-              </>
-            ) : (
-              <>
-                <div className="text-2xl font-bold">-</div>
-                <p className="text-xs text-muted-foreground">
-                  Dati non disponibili
-                </p>
-              </>
-            )}
-          </CardContent>
-        </Card>
-        </motion.div>
-
-        <motion.div layout="position" transition={springLayoutTransition} variants={cardItem}>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Variazione Annuale (YTD)</CardTitle>
-            {overview?.variations.yearly && overview.variations.yearly.value < 0
-              ? <TrendingDown className="h-4 w-4 text-red-500" />
-              : <TrendingUp className="h-4 w-4 text-green-500" />
-            }
-          </CardHeader>
-          <CardContent>
-            {overview?.variations.yearly ? (
-              <>
-                <div className={`text-2xl font-bold ${
-                  overview.variations.yearly.value >= 0 ? 'text-green-600' : 'text-red-600'
-                }`}>
-                  {overview.variations.yearly.value >= 0 ? '+' : ''}{formatCurrency(overview.variations.yearly.value)}
-                </div>
-                <p className={`text-xs ${
-                  overview.variations.yearly.percentage >= 0 ? 'text-green-600' : 'text-red-600'
-                }`}>
-                  {overview.variations.yearly.percentage >= 0 ? '+' : ''}{overview.variations.yearly.percentage.toFixed(2)}%
-                </p>
-              </>
-            ) : (
-              <>
-                <div className="text-2xl font-bold">-</div>
-                <p className="text-xs text-muted-foreground">
-                  Dati non disponibili
-                </p>
-              </>
-            )}
-          </CardContent>
-        </Card>
-        </motion.div>
-      </motion.div>
-
-      {/* Expense Stats Cards */}
-      <motion.div
-        layout="position"
-        transition={springLayoutTransition}
-        variants={staggerContainer}
-        initial="hidden"
-        animate="visible"
-        className="grid gap-6 md:grid-cols-2"
-      >
-        <motion.div layout="position" transition={springLayoutTransition} variants={cardItem}>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Entrate Questo Mese</CardTitle>
-            <TrendingUp className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
+          <CardContent className="pt-0">
             {overview?.expenseStats ? (
               <>
-                <div className="text-2xl font-bold text-green-600">
-                  {formatCurrency(overview.expenseStats.currentMonth.income)}
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <TrendingUp className="h-3.5 w-3.5 text-green-600" />
+                      <p className="text-xs text-muted-foreground">Entrate</p>
+                    </div>
+                    <div className="text-2xl font-bold text-green-600">
+                      {formatCurrency(overview.expenseStats.currentMonth.income)}
+                    </div>
+                    <p className={`text-xs mt-0.5 ${
+                      overview.expenseStats.delta.income >= 0 ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                      {overview.expenseStats.delta.income >= 0 ? '+' : ''}{overview.expenseStats.delta.income.toFixed(1)}% dal mese scorso
+                    </p>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <TrendingDown className="h-3.5 w-3.5 text-red-600" />
+                      <p className="text-xs text-muted-foreground">Spese</p>
+                    </div>
+                    <div className="text-2xl font-bold text-red-600">
+                      {formatCurrency(overview.expenseStats.currentMonth.expenses)}
+                    </div>
+                    <p className={`text-xs mt-0.5 ${
+                      overview.expenseStats.delta.expenses >= 0 ? 'text-red-600' : 'text-green-600'
+                    }`}>
+                      {overview.expenseStats.delta.expenses >= 0 ? '+' : ''}{overview.expenseStats.delta.expenses.toFixed(1)}% dal mese scorso
+                    </p>
+                  </div>
                 </div>
-                <p className={`text-xs ${
-                  overview.expenseStats.delta.income >= 0 ? 'text-green-600' : 'text-red-600'
-                }`}>
-                  {overview.expenseStats.delta.income >= 0 ? '+' : ''}{overview.expenseStats.delta.income.toFixed(1)}% dal mese scorso
-                </p>
+                {/* Savings rate row — only when income > 0 to avoid division by zero */}
+                {overview.expenseStats.currentMonth.income > 0 && (() => {
+                  const { income, expenses } = overview.expenseStats!.currentMonth;
+                  const rate = ((income - expenses) / income) * 100;
+                  const rateColor = rate >= 20
+                    ? 'text-green-600 dark:text-green-400'
+                    : rate >= 10
+                    ? 'text-amber-600 dark:text-amber-400'
+                    : 'text-red-600 dark:text-red-400';
+                  return (
+                    <div className="border-t border-border mt-4 pt-4 flex items-center justify-between">
+                      <p className="text-xs text-muted-foreground">Tasso di risparmio</p>
+                      <span className={`text-sm font-semibold ${rateColor}`}>
+                        {rate >= 0 ? '+' : ''}{rate.toFixed(0)}%
+                      </span>
+                    </div>
+                  );
+                })()}
               </>
             ) : (
-              <>
-                <div className="text-2xl font-bold">€0,00</div>
-                <p className="text-xs text-muted-foreground">Nessun dato</p>
-              </>
+              <div className="flex flex-col items-center justify-center py-4 gap-2">
+                <Receipt className="h-7 w-7 text-muted-foreground/40" />
+                <p className="text-sm text-muted-foreground">Nessuna spesa registrata questo mese</p>
+              </div>
             )}
           </CardContent>
         </Card>
-        </motion.div>
-
-        <motion.div layout="position" transition={springLayoutTransition} variants={cardItem}>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Spese Questo Mese</CardTitle>
-            <TrendingDown className="h-4 w-4 text-red-600" />
-          </CardHeader>
-          <CardContent>
-            {overview?.expenseStats ? (
-              <>
-                <div className="text-2xl font-bold text-red-600">
-                  {formatCurrency(overview.expenseStats.currentMonth.expenses)}
-                </div>
-                <p className={`text-xs ${
-                  overview.expenseStats.delta.expenses >= 0 ? 'text-red-600' : 'text-green-600'
-                }`}>
-                  {overview.expenseStats.delta.expenses >= 0 ? '+' : ''}{overview.expenseStats.delta.expenses.toFixed(1)}% dal mese scorso
-                </p>
-              </>
-            ) : (
-              <>
-                <div className="text-2xl font-bold">€0,00</div>
-                <p className="text-xs text-muted-foreground">Nessun dato</p>
-              </>
-            )}
-          </CardContent>
-        </Card>
-        </motion.div>
       </motion.div>
 
       {/* Cost cards — shown if any asset has TER tracking or stamp duty is enabled */}
@@ -663,7 +658,7 @@ export default function DashboardPage() {
           initial="hidden"
           animate="visible"
           exit="exit"
-          className="grid gap-6 md:grid-cols-2"
+          className="grid gap-6 sm:grid-cols-2"
         >
           {overview?.flags.hasTERTracking && (
             <motion.div layout="position" transition={springLayoutTransition} variants={cardItem}>
@@ -673,7 +668,7 @@ export default function DashboardPage() {
                 <Receipt className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-purple-600">
+                <div className="text-2xl font-bold">
                   {overview.metrics.portfolioTER.toFixed(2)}%
                 </div>
                 <p className="text-xs text-muted-foreground">
@@ -688,7 +683,7 @@ export default function DashboardPage() {
             layout="position"
             transition={springLayoutTransition}
             variants={cardItem}
-            className={!overview?.flags.hasTERTracking ? 'md:col-span-2' : ''}
+            className={!overview?.flags.hasTERTracking ? 'sm:col-span-2' : ''}
           >
           <Card className="h-full">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -696,7 +691,7 @@ export default function DashboardPage() {
               <TrendingDown className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-orange-600">
+              <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">
                 {formatCurrency(overview.metrics.annualPortfolioCost + overview.metrics.annualStampDuty)}
               </div>
               {overview.flags.hasTERTracking && overview.flags.hasStampDuty ? (
