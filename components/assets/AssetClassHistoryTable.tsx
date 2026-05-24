@@ -17,12 +17,10 @@
  */
 'use client';
 
-import { motion, useReducedMotion } from 'framer-motion';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import type { MonthlySnapshot, AssetHistoryDateFilter } from '@/types/assets';
 import { transformAssetClassHistoryData } from '@/lib/utils/assetClassHistoryUtils';
 import { formatCurrency, formatNumber } from '@/lib/services/chartService';
-import { Button } from '@/components/ui/button';
 import {
   Table,
   TableBody,
@@ -32,10 +30,8 @@ import {
   TableRow,
   TableFooter,
 } from '@/components/ui/table';
-import { RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { EmptyState, ChartEmptyIcon } from '@/components/ui/EmptyState';
-import { sectionRefreshPulse, tableShellSettle } from '@/lib/utils/motionVariants';
 
 interface AssetClassHistoryTableProps {
   snapshots: MonthlySnapshot[];
@@ -44,12 +40,6 @@ interface AssetClassHistoryTableProps {
   includePreviousMonthBaseline?: boolean;
   excludeCash?: boolean;
   loading: boolean;
-  onRefresh: () => Promise<void>;
-  isRefreshing?: boolean;
-  isActiveView?: boolean;
-  isLatestRefreshedView?: boolean;
-  refreshToken?: number;
-  lastRefreshAt?: Date | null;
 }
 
 // CSS classes for MoM color-coded cells (same palette as AssetPriceHistoryTable)
@@ -87,16 +77,7 @@ export function AssetClassHistoryTable({
   includePreviousMonthBaseline = false,
   excludeCash = false,
   loading,
-  onRefresh,
-  isRefreshing = false,
-  isActiveView = false,
-  isLatestRefreshedView = false,
-  refreshToken = 0,
-  lastRefreshAt = null,
 }: AssetClassHistoryTableProps) {
-  const prefersReducedMotion = useReducedMotion();
-  const [isRefreshHighlighted, setIsRefreshHighlighted] = useState(false);
-
   const tableData = useMemo(
     () => transformAssetClassHistoryData(snapshots, {
       filterYear,
@@ -109,77 +90,10 @@ export function AssetClassHistoryTable({
 
   const { rows, monthColumns, totalRow } = tableData;
 
-  useEffect(() => {
-    if (!isActiveView || !isLatestRefreshedView || refreshToken === 0) return;
-    if (prefersReducedMotion) {
-      setIsRefreshHighlighted(false);
-      return;
-    }
-
-    setIsRefreshHighlighted(true);
-    const timerId = window.setTimeout(() => {
-      setIsRefreshHighlighted(false);
-    }, 520);
-
-    return () => window.clearTimeout(timerId);
-  }, [isActiveView, isLatestRefreshedView, prefersReducedMotion, refreshToken]);
-
-  const refreshLabel = lastRefreshAt
-    ? new Intl.DateTimeFormat('it-IT', {
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-      }).format(lastRefreshAt)
-    : null;
-
   return (
-    <motion.div
-      initial={false}
-      animate={isActiveView ? 'visible' : 'inactive'}
-      variants={tableShellSettle}
-      className="space-y-4"
-    >
-      {/* Header */}
-      <motion.div
-        initial={false}
-        animate={isRefreshHighlighted ? 'pulse' : 'idle'}
-        variants={sectionRefreshPulse}
-        className={cn(
-          'flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-start sm:justify-between',
-          'border-border bg-card',
-          isRefreshHighlighted && 'border-primary/30 bg-primary/5'
-        )}
-      >
-        <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-foreground">
-            Asset Class {filterYear ?? 'Storico'}
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Totale mensile per classe di asset con variazioni month-over-month
-          </p>
-          {refreshLabel && isActiveView ? (
-            <p className="mt-1 text-xs tabular-nums text-muted-foreground">
-              Ultimo aggiornamento: {refreshLabel}
-            </p>
-          ) : null}
-        </div>
-        <Button onClick={onRefresh} disabled={loading || isRefreshing} variant="outline">
-          <RefreshCw className={cn('mr-2 h-4 w-4', (loading || isRefreshing) && 'animate-spin')} />
-          Aggiorna
-        </Button>
-      </motion.div>
-
+    <div className="space-y-4">
       {/* Table container */}
-      <motion.div
-        initial={false}
-        animate={isRefreshHighlighted ? 'pulse' : 'idle'}
-        variants={sectionRefreshPulse}
-        className={cn(
-          'overflow-x-auto max-h-[600px] rounded-xl border text-xs sm:text-sm',
-          'border-border bg-background',
-          isRefreshHighlighted && 'border-primary/20 shadow-sm'
-        )}
-      >
+      <div className="overflow-x-auto max-h-[600px] rounded-xl border text-xs sm:text-sm border-border bg-background">
         {rows.length === 0 ? (
           <EmptyState
             icon={<ChartEmptyIcon />}
@@ -343,7 +257,7 @@ export function AssetClassHistoryTable({
             )}
           </Table>
         )}
-      </motion.div>
-    </motion.div>
+      </div>
+    </div>
   );
 }

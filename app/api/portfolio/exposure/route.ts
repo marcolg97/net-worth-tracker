@@ -42,6 +42,7 @@ export async function GET(request: NextRequest) {
     // Build the expected cache key before reading cache, so we can validate staleness
     const activeAssets = assets.filter((a) => a.quantity > 0);
     const etfAssets = activeAssets.filter((a) => a.type === 'etf');
+    const stockAssets = activeAssets.filter((a) => a.type === 'stock' && a.assetClass === 'equity');
     const totalPortfolioValue = activeAssets.reduce((sum, a) => {
       const isGBp = a.currency === 'GBp';
       const normalised = isGBp ? a.currentPrice / 100 : a.currentPrice;
@@ -52,7 +53,7 @@ export async function GET(request: NextRequest) {
       const base = a.quantity * priceEur;
       return sum + (a.type === 'realestate' && a.outstandingDebt ? base - a.outstandingDebt : base);
     }, 0);
-    const expectedCacheKey = `${etfAssets.length}-${etfAssets.map((a) => a.ticker).sort().join(',')}-${Math.round(totalPortfolioValue)}`;
+    const expectedCacheKey = `${etfAssets.length}-${etfAssets.map((a) => a.ticker).sort().join(',')}-${stockAssets.map((a) => a.ticker).sort().join(',')}-${Math.round(totalPortfolioValue)}`;
 
     // Attempt to serve from cache (skipped on force refresh)
     if (!forceRefresh) {

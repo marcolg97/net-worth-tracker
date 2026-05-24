@@ -75,17 +75,19 @@ export function prepareAssetDistributionData(
     return [];
   }
 
-  // Calculate value for each asset
-  const assetValues = assets.map((asset) => ({
-    name: asset.name,
-    ticker: asset.ticker,
-    value: calculateAssetValue(asset),
-  }));
+  const assetValues = assets.map((asset) => {
+    const value = calculateAssetValue(asset);
+    const costBasis = (asset.averageCost && asset.quantity)
+      ? asset.averageCost * asset.quantity
+      : undefined;
+    const change = (costBasis && costBasis > 0 && value > 0)
+      ? ((value - costBasis) / costBasis) * 100
+      : undefined;
+    return { name: asset.name, ticker: asset.ticker, type: asset.type, value, change };
+  });
 
-  // Sort by value descending
   assetValues.sort((a, b) => b.value - a.value);
 
-  // Take top 10 and aggregate the rest as "Others"
   const top10 = assetValues.slice(0, 10);
   const others = assetValues.slice(10);
 
@@ -93,20 +95,23 @@ export function prepareAssetDistributionData(
     colors?.[index] ?? getChartColor(index);
 
   const chartData: PieChartData[] = top10.map((asset, index) => ({
-    name: asset.ticker,
+    name: asset.ticker || asset.name,
+    displayName: asset.name,
+    assetType: asset.type,
     value: asset.value,
     percentage: (asset.value / totalValue) * 100,
     color: resolveColor(index),
+    change: asset.change,
   }));
 
-  // Add "Others" if there are more than 10 assets
   if (others.length > 0) {
     const othersValue = others.reduce((sum, asset) => sum + asset.value, 0);
     chartData.push({
       name: 'Altri',
+      displayName: 'Altri',
       value: othersValue,
       percentage: (othersValue / totalValue) * 100,
-      color: '#9CA3AF', // gray
+      color: '#9CA3AF',
     });
   }
 

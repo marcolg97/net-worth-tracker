@@ -5,9 +5,10 @@ import { Timestamp } from 'firebase-admin/firestore';
 import { adminDb } from '@/lib/firebase/admin';
 import { Asset, AssetAllocationSettings, MonthlySnapshot } from '@/types/assets';
 import { Expense } from '@/types/expenses';
-import { DashboardOverviewPayload, DashboardOverviewExpenseStats } from '@/types/dashboardOverview';
+import { DashboardOverviewPayload, DashboardOverviewExpenseStats, DashboardCategoryBreakdownItem } from '@/types/dashboardOverview';
 import {
   calculateAnnualPortfolioCost,
+  calculateAssetValue,
   calculateIlliquidNetWorth,
   calculateLiquidEstimatedTaxes,
   calculateLiquidNetWorth,
@@ -133,6 +134,16 @@ async function getSettingsForUser(userId: string): Promise<AssetAllocationSettin
   } as AssetAllocationSettings;
 }
 
+async function getCategoryMapForUser(userId: string): Promise<Map<string, { color?: string }>> {
+  const snapshot = await adminDb.collection('expenseCategories').where('userId', '==', userId).get();
+  const map = new Map<string, { color?: string }>();
+  for (const doc of snapshot.docs) {
+    const data = doc.data();
+    map.set(doc.id, { color: data.color });
+  }
+  return map;
+}
+
 async function getExpensesForMonth(userId: string, year: number, month: number): Promise<Expense[]> {
   const { start, end } = getMonthDateRangeInItaly(year, month);
   const snapshot = await adminDb
@@ -156,6 +167,31 @@ async function getExpensesForMonth(userId: string, year: number, month: number):
   }) as Expense[];
 }
 
+function buildCategoryBreakdown(
+  expenses: Expense[],
+  isIncome: boolean,
+  categoryMap: Map<string, { color?: string }>
+): DashboardCategoryBreakdownItem[] {
+  const totals = new Map<string, { name: string; amount: number; color?: string }>();
+  for (const expense of expenses) {
+    if ((expense.type === 'income') !== isIncome) continue;
+    const amount = Math.abs(expense.amount);
+    const existing = totals.get(expense.categoryId);
+    if (existing) {
+      existing.amount += amount;
+    } else {
+      totals.set(expense.categoryId, {
+        name: expense.categoryName,
+        amount,
+        color: categoryMap.get(expense.categoryId)?.color,
+      });
+    }
+  }
+  return Array.from(totals.values())
+    .sort((a, b) => b.amount - a.amount)
+    .slice(0, 6);
+}
+
 function summarizeExpenses(expenses: Expense[]) {
   let income = 0;
   let totalExpenses = 0;
@@ -177,7 +213,8 @@ function summarizeExpenses(expenses: Expense[]) {
 
 function buildExpenseStats(
   currentExpenses: Expense[],
-  previousExpenses: Expense[]
+  previousExpenses: Expense[],
+  categoryMap: Map<string, { color?: string }>
 ): DashboardOverviewExpenseStats {
   const currentMonth = summarizeExpenses(currentExpenses);
   const previousMonth = summarizeExpenses(previousExpenses);
@@ -196,6 +233,8 @@ function buildExpenseStats(
         ? ((currentMonth.net - previousMonth.net) / Math.abs(previousMonth.net)) * 100
         : 0,
     },
+    expenseCategories: buildCategoryBreakdown(currentExpenses, false, categoryMap),
+    incomeCategories: buildCategoryBreakdown(currentExpenses, true, categoryMap),
   };
 }
 
@@ -211,6 +250,9 @@ function buildLiveOverviewPayload(
   ) ?? null;
 
   const totalValue = calculateTotalValue(assets);
+  const cashValue = assets
+    .filter(a => a.type === 'cash')
+    .reduce((sum, a) => sum + calculateAssetValue(a), 0);
   const liquidNetWorth = calculateLiquidNetWorth(assets);
   const illiquidNetWorth = calculateIlliquidNetWorth(assets);
   const estimatedTaxes = calculateTotalEstimatedTaxes(assets);
@@ -245,6 +287,7 @@ function buildLiveOverviewPayload(
   return {
     metrics: {
       totalValue,
+      cashValue,
       liquidNetWorth,
       illiquidNetWorth,
       netTotal: calculateNetTotal(assets),
@@ -292,10 +335,13 @@ function buildLiveOverviewPayload(
     // already reflects the live state and avoids duplicating the last point.
     // Appending totalValue ensures the line always ends at today's actual net worth,
     // not at the previous month's snapshot (which would lag by weeks mid-month).
+    // Cap at 47 historical points + 1 live point = 48 total (4 years of data).
+    // The client can filter down to shorter periods; this prevents unbounded
+    // payload growth for users with multi-year histories.
     sparklineData: [
       ...snapshots
         .filter((s) => !(s.year === currentYear && s.month === currentMonth))
-        .slice(-11)
+        .slice(-47)
         .map((s) => ({ month: s.month, year: s.year, totalNetWorth: s.totalNetWorth })),
       { month: currentMonth, year: currentYear, totalNetWorth: totalValue },
     ],
@@ -354,12 +400,13 @@ async function recomputeDashboardOverview(userId: string): Promise<DashboardOver
   let expenseStats: DashboardOverviewExpenseStats | null = null;
 
   try {
-    const [currentMonthExpenses, previousMonthExpenses] = await Promise.all([
+    const [currentMonthExpenses, previousMonthExpenses, categoryMap] = await Promise.all([
       getExpensesForMonth(userId, currentYear, currentMonth),
       getExpensesForMonth(userId, previousYear, previousMonth),
+      getCategoryMapForUser(userId),
     ]);
 
-    expenseStats = buildExpenseStats(currentMonthExpenses, previousMonthExpenses);
+    expenseStats = buildExpenseStats(currentMonthExpenses, previousMonthExpenses, categoryMap);
   } catch (error) {
     console.warn('[dashboardOverviewService] Failed to compute expense stats, falling back to null:', error);
   }

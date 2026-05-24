@@ -1,5 +1,11 @@
 import { PieChartData } from '@/types/assets';
 
+export interface DashboardCategoryBreakdownItem {
+  name: string;
+  amount: number;
+  color?: string;
+}
+
 export interface DashboardOverviewSparklinePoint {
   month: number;
   year: number;
@@ -27,11 +33,14 @@ export interface DashboardOverviewExpenseStats {
     expenses: number;
     net: number;
   };
+  expenseCategories: DashboardCategoryBreakdownItem[];
+  incomeCategories: DashboardCategoryBreakdownItem[];
 }
 
 export interface DashboardOverviewPayload {
   metrics: {
     totalValue: number;
+    cashValue: number;
     liquidNetWorth: number;
     illiquidNetWorth: number;
     netTotal: number;

@@ -185,7 +185,7 @@ function ProgressCell({ ratio, inverted = false }: { ratio: number; inverted?: b
   const pct = Math.round(ratio * 100);
   return (
     <div className="flex items-center gap-2 min-w-[120px]">
-      <div className="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+      <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
         <div
           className={`h-full rounded-full transition-all ${progressColor(ratio, inverted)}`}
           style={{ width: `${Math.min(100, pct)}%` }}
@@ -577,11 +577,11 @@ export function BudgetTab({
             <TableRow>
               <TableHead>Voce</TableHead>
               <TableHead className="text-right">Budget/anno</TableHead>
-              <TableHead className="text-right text-blue-600 dark:text-blue-400">{currentYear}</TableHead>
+              <TableHead className="text-right text-foreground">{currentYear}</TableHead>
               <TableHead className="text-right text-amber-600 dark:text-amber-400">{currentYear - 1}</TableHead>
               <TableHead className="text-right text-xs">vs {currentYear - 1}</TableHead>
               {hasHistory && (
-                <TableHead className="text-right text-purple-600 dark:text-purple-400">Media storica</TableHead>
+                <TableHead className="text-right text-foreground">Media storica</TableHead>
               )}
               {hasHistory && (
                 <TableHead className="text-right text-xs">vs Media</TableHead>
@@ -595,7 +595,7 @@ export function BudgetTab({
                         onClick={() => setProgressTooltipOpen((v) => !v)}
                       >
                         Avanzamento
-                        <HelpCircle className="h-3.5 w-3.5 text-gray-400" />
+                        <HelpCircle className="h-3.5 w-3.5 text-muted-foreground" />
                       </button>
                     </TooltipTrigger>
                     <TooltipContent side="top" className="max-w-xs text-xs leading-relaxed p-3">
@@ -633,17 +633,17 @@ export function BudgetTab({
                   {/* Section header row — click to collapse/expand */}
                   <TableRow
                     key={`section-${sectionType}`}
-                    className="bg-gray-50 dark:bg-gray-800/60 cursor-pointer select-none hover:bg-gray-100 dark:hover:bg-gray-800"
+                    className="bg-muted/40 cursor-pointer select-none hover:bg-muted/40"
                     onClick={() => toggleSection(sectionType)}
                   >
                     <TableCell
                       colSpan={totalCols}
-                      className="py-2 font-semibold text-sm text-gray-700 dark:text-gray-300"
+                      className="py-2 font-semibold text-sm"
                     >
                       <span className="flex items-center gap-2">
                         <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${!isCollapsed ? 'rotate-180' : ''}`} />
                         {sectionLabel}
-                        <span className="text-xs font-normal text-gray-400">
+                        <span className="text-xs font-normal text-muted-foreground">
                           ({items.length} {items.length === 1 ? 'voce' : 'voci'})
                         </span>
                       </span>
@@ -672,7 +672,7 @@ export function BudgetTab({
                                 return (
                                   <div
                                     key={item.id}
-                                    className={`flex items-center border-b border-gray-100 dark:border-gray-800 cursor-pointer transition-colors ${
+                                    className={`flex items-center border-b border-border cursor-pointer transition-colors ${
                                       isSelected
                                         ? 'bg-blue-50/60 dark:bg-blue-950/20 hover:bg-blue-50/80 dark:hover:bg-blue-950/30'
                                         : 'hover:bg-muted/40'
@@ -685,7 +685,7 @@ export function BudgetTab({
                                       <span className="flex items-center gap-1">
                                         {isSelected
                                           ? <ChevronDown className="h-3 w-3 text-blue-500 shrink-0" />
-                                          : <ChevronRight className="h-3 w-3 text-gray-300 dark:text-gray-600 shrink-0" />}
+                                          : <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />}
                                         {getItemLabel(item, categories)}
                                       </span>
                                     </div>

@@ -46,8 +46,15 @@
   --breakpoint-desktop: 1440px;
 }
 
+@keyframes fadeInDrop {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+
 :root {
   --radius: 0.625rem;
+  --sh-card: 0 4px 18px -4px oklch(0 0 0/.09),0 2px 6px -2px oklch(0 0 0/.05),inset 0 0 0 1px oklch(0.147 0.004 49.25/.055);
+  --sh-pop: 0 12px 32px -8px oklch(0 0 0/.14),0 4px 12px -4px oklch(0 0 0/.07),inset 0 0 0 1px oklch(0.147 0.004 49.25/.06);
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -82,6 +89,8 @@
 }
 
 .dark {
+  --sh-card: 0 4px 18px -4px oklch(0 0 0/.3),0 2px 6px -2px oklch(0 0 0/.15),inset 0 0 0 1px oklch(1 0 0/.07);
+  --sh-pop: 0 16px 40px -8px oklch(0 0 0/.5),0 4px 12px -4px oklch(0 0 0/.2),inset 0 0 0 1px oklch(1 0 0/.09);
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);

@@ -1,69 +1,77 @@
-/**
- * CASHFLOW PAGE
- *
- * Tab orchestration page for cashflow analysis with lazy loading.
- *
- * LAZY LOADING STRATEGY:
- * - Tabs mounted only when first activated (mountedTabs state tracking)
- * - Once mounted, tabs stay mounted (no unmounting on tab switch)
- * - Reduces initial page load time, improves perceived performance
- *
- * TAB STRUCTURE:
- * - Tracking: Current year's transactions and charts
- * - Current Year: Current year analysis
- * - Total History: All-time cashflow analysis
- * - Dividends: Dividend tracking
- *
- * WHY LAZY LOADING:
- * Each tab makes separate API calls and renders heavy charts.
- * Loading all tabs at once would cause ~3x longer initial load time.
- */
-
 'use client';
 
-import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Wallet, Receipt, TrendingUp, BarChart3, Coins, Target, Layers } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ExpenseTrackingTab } from '@/components/cashflow/ExpenseTrackingTab';
+import { Plus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { ExpenseTrackingTab, ExpenseTrackingTabHandle } from '@/components/cashflow/ExpenseTrackingTab';
 import { CurrentYearTab } from '@/components/cashflow/CurrentYearTab';
 import { TotalHistoryTab } from '@/components/cashflow/TotalHistoryTab';
 import { DividendTrackingTab } from '@/components/dividends/DividendTrackingTab';
 import { BudgetTab } from '@/components/cashflow/BudgetTab';
 import { CostCentersTab } from '@/components/cashflow/CostCentersTab';
+import { CashflowSection } from '@/components/dashboard/CashflowSection';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDemoMode } from '@/lib/hooks/useDemoMode';
 import { Dividend } from '@/types/dividend';
 import { Asset } from '@/types/assets';
+import { Expense, ExpenseCategory } from '@/types/expenses';
+import { DashboardOverviewExpenseStats } from '@/types/dashboardOverview';
 import { useExpenses, useExpenseCategories } from '@/lib/hooks/useExpenses';
 import { queryKeys } from '@/lib/query/queryKeys';
 import { getAllAssets } from '@/lib/services/assetService';
 import { getSettings } from '@/lib/services/assetAllocationService';
 import { authenticatedFetch } from '@/lib/utils/authFetch';
-import { tabPanelSwitch } from '@/lib/utils/motionVariants';
+import { getItalyMonthYear, getItalyMonth, getItalyYear } from '@/lib/utils/dateHelpers';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+function CashflowTabButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'relative pb-2.5 text-sm font-medium transition-colors whitespace-nowrap shrink-0',
+        active ? 'text-foreground' : 'text-muted-foreground hover:text-foreground/70',
+      )}
+    >
+      {children}
+      <span
+        className={cn(
+          'absolute bottom-0 left-0 right-0 h-[2px] rounded-full bg-foreground transition-opacity duration-150',
+          active ? 'opacity-100' : 'opacity-0',
+        )}
+      />
+    </button>
+  );
+}
+
 export default function CashflowPage() {
   const { user } = useAuth();
+  const isDemo = useDemoMode();
   const queryClient = useQueryClient();
+  const trackingTabRef = useRef<ExpenseTrackingTabHandle>(null);
 
   const [mountedTabs, setMountedTabs] = useState<Set<string>>(new Set(['tracking']));
   const [activeTab, setActiveTab] = useState<string>('tracking');
-  // null = settings not yet loaded (avoids the tab appearing late after an async flip from false → true)
   const [costCentersEnabled, setCostCentersEnabled] = useState<boolean | null>(null);
 
-  // React Query hooks for expenses and categories
   const { data: allExpenses = [], isLoading: expensesLoading } = useExpenses(user?.uid);
   const { data: categories = [], isLoading: categoriesLoading } = useExpenseCategories(user?.uid);
 
   const [cashflowHistoryStartYear, setCashflowHistoryStartYear] = useState<number>(2025);
-
-  // Manual state for other tabs data (dividends, assets)
   const [dividends, setDividends] = useState<Dividend[]>([]);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [otherDataLoading, setOtherDataLoading] = useState(false);
@@ -71,23 +79,78 @@ export default function CashflowPage() {
 
   const loading = expensesLoading || categoriesLoading || otherDataLoading;
 
-  // Load dividends and assets only when their tabs are mounted
+  const { month: nowMonth, year: nowYear } = getItalyMonthYear();
+  const prevMonth = nowMonth === 1 ? 12 : nowMonth - 1;
+  const prevYear = nowMonth === 1 ? nowYear - 1 : nowYear;
+
+  const expenseStats = useMemo((): DashboardOverviewExpenseStats | null => {
+    if (allExpenses.length === 0) return null;
+
+    const filterMonth = (exps: Expense[], y: number, m: number) =>
+      exps.filter(e => {
+        const d = e.date instanceof Date ? e.date : e.date.toDate();
+        return getItalyYear(d) === y && getItalyMonth(d) === m;
+      });
+
+    const summarize = (exps: Expense[]) => {
+      const income = exps.filter(e => e.type === 'income').reduce((s, e) => s + Math.abs(e.amount), 0);
+      const expenses = exps.filter(e => e.type !== 'income').reduce((s, e) => s + Math.abs(e.amount), 0);
+      return { income, expenses, net: income - expenses };
+    };
+
+    const buildCats = (exps: Expense[], isIncome: boolean, cats: ExpenseCategory[]) => {
+      const filtered = exps.filter(e => isIncome ? e.type === 'income' : e.type !== 'income');
+      const map = new Map<string, { name: string; amount: number; color?: string }>();
+      for (const e of filtered) {
+        const key = e.categoryId ?? '__other';
+        const cat = cats.find(c => c.id === e.categoryId);
+        const existing = map.get(key);
+        if (existing) {
+          existing.amount += Math.abs(e.amount);
+        } else {
+          map.set(key, { name: e.categoryName ?? 'Altro', amount: Math.abs(e.amount), color: cat?.color });
+        }
+      }
+      return Array.from(map.values()).sort((a, b) => b.amount - a.amount);
+    };
+
+    const current = filterMonth(allExpenses, nowYear, nowMonth);
+    const previous = filterMonth(allExpenses, prevYear, prevMonth);
+    if (current.length === 0 && previous.length === 0) return null;
+
+    const currentMonth = summarize(current);
+    const previousMonth = summarize(previous);
+
+    return {
+      currentMonth,
+      previousMonth,
+      delta: {
+        income: previousMonth.income > 0
+          ? ((currentMonth.income - previousMonth.income) / previousMonth.income) * 100
+          : 0,
+        expenses: previousMonth.expenses > 0
+          ? ((currentMonth.expenses - previousMonth.expenses) / previousMonth.expenses) * 100
+          : 0,
+        net: previousMonth.net !== 0
+          ? ((currentMonth.net - previousMonth.net) / Math.abs(previousMonth.net)) * 100
+          : 0,
+      },
+      expenseCategories: buildCats(current, false, categories),
+      incomeCategories: buildCats(current, true, categories),
+    };
+  }, [allExpenses, categories, nowMonth, nowYear, prevMonth, prevYear]);
+
   const loadOtherData = async () => {
     if (!user || otherDataLoaded) return;
-
     try {
       setOtherDataLoading(true);
-
-      // Fetch only dividends and assets (expenses/categories handled by React Query)
       const [dividendsData, assetsData] = await Promise.all([
         authenticatedFetch(`/api/dividends?userId=${user.uid}`)
           .then(r => r.json())
           .then(d => d.dividends || []),
         getAllAssets(user.uid),
       ]);
-
       setDividends(dividendsData);
-      // Include equity and bonds: bonds have coupons tracked as dividend entries
       setAssets(assetsData.filter(a => a.assetClass === 'equity' || a.assetClass === 'bonds'));
       setOtherDataLoaded(true);
     } catch (error) {
@@ -103,25 +166,21 @@ export default function CashflowPage() {
   };
 
   useEffect(() => {
-    const needsOtherData = mountedTabs.has('dividends');
-    if (user && needsOtherData && !otherDataLoaded) {
+    if (user && mountedTabs.has('dividends') && !otherDataLoaded) {
       loadOtherData();
     }
   }, [user, mountedTabs, otherDataLoaded]);
 
-  // Load cashflow history start year from user settings (one-time read per session)
   useEffect(() => {
     if (!user) return;
     const loadSettings = async () => {
       try {
         const settings = await getSettings(user.uid);
-
         if (settings?.cashflowHistoryStartYear !== undefined) {
           setCashflowHistoryStartYear(settings.cashflowHistoryStartYear);
         }
         setCostCentersEnabled(settings?.costCentersEnabled ?? false);
       } catch (error) {
-        // Settings bootstrap is non-fatal for the page: keep safe defaults and log explicitly.
         console.error('Failed to load cashflow settings, using fallback defaults', {
           userId: user.uid,
           operation: 'loadCashflowSettings',
@@ -132,20 +191,12 @@ export default function CashflowPage() {
         setCostCentersEnabled(false);
       }
     };
-
     void loadSettings();
   }, [user]);
 
   const handleRefresh = async () => {
-    // Invalidate React Query caches for expenses and categories
-    await queryClient.invalidateQueries({
-      queryKey: queryKeys.expenses.all(user?.uid || ''),
-    });
-    await queryClient.invalidateQueries({
-      queryKey: queryKeys.expenses.categories(user?.uid || ''),
-    });
-
-    // Force re-fetch of other data (dividends, assets)
+    await queryClient.invalidateQueries({ queryKey: queryKeys.expenses.all(user?.uid || '') });
+    await queryClient.invalidateQueries({ queryKey: queryKeys.expenses.categories(user?.uid || '') });
     setOtherDataLoaded(false);
     await loadOtherData();
   };
@@ -156,171 +207,116 @@ export default function CashflowPage() {
   };
 
   return (
-    <div className="space-y-6 p-4 desktop:p-8 max-desktop:portrait:pb-20">
+    <div className="space-y-8 max-desktop:portrait:pb-20">
       {/* Header */}
-      <div className="border-b border-border pb-4">
-        <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Operatività</p>
-        <h1 className="mt-1 flex items-center gap-2 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-          <Wallet className="h-7 w-7 text-primary sm:h-8 sm:w-8" />
-          Cashflow
-        </h1>
-        <p className="mt-2 text-muted-foreground">
+      <div className="space-y-1">
+        <div className="flex items-start justify-between gap-4">
+          <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Cashflow</h1>
+          <Button
+            onClick={() => trackingTabRef.current?.openAddDialog()}
+            variant="default"
+            className="rounded-full"
+            disabled={isDemo || activeTab !== 'tracking'}
+            title={isDemo ? 'Non disponibile in modalità demo' : undefined}
+          >
+            <Plus className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Nuova Spesa</span>
+          </Button>
+        </div>
+        <p className="text-[0.77rem] text-muted-foreground">
           Traccia e analizza le tue entrate e uscite nel tempo
         </p>
       </div>
 
-      {/* Tabs */}
-      <Tabs defaultValue="tracking" value={activeTab} onValueChange={handleTabChange} className="w-full">
-        {/* Mobile tab selector — Radix Select replaces cramped 5-tab TabsList on small screens */}
-        <div className="desktop:hidden mb-2">
-          <Select value={activeTab} onValueChange={handleTabChange}>
-            <SelectTrigger className="w-full h-12 text-base">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="tracking">Tracciamento</SelectItem>
-              <SelectItem value="dividends">Dividendi &amp; Cedole</SelectItem>
-              <SelectItem value="current-year">Anno Corrente</SelectItem>
-              <SelectItem value="total-history">Storico Totale</SelectItem>
-              <SelectItem value="budget">Budget</SelectItem>
-              {costCentersEnabled && (
-                <SelectItem value="cost-centers">Centri di Costo</SelectItem>
-              )}
-            </SelectContent>
-          </Select>
+      {/* Tab navigation — scrollable underline bar */}
+      <div className="flex items-end gap-5 overflow-x-auto border-b border-border/60 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <CashflowTabButton active={activeTab === 'tracking'} onClick={() => handleTabChange('tracking')}>
+          Tracciamento
+        </CashflowTabButton>
+        <CashflowTabButton active={activeTab === 'dividends'} onClick={() => handleTabChange('dividends')}>
+          Dividendi &amp; Cedole
+        </CashflowTabButton>
+        <CashflowTabButton active={activeTab === 'current-year'} onClick={() => handleTabChange('current-year')}>
+          Anno Corrente
+        </CashflowTabButton>
+        <CashflowTabButton active={activeTab === 'total-history'} onClick={() => handleTabChange('total-history')}>
+          Storico Totale
+        </CashflowTabButton>
+        <CashflowTabButton active={activeTab === 'budget'} onClick={() => handleTabChange('budget')}>
+          Budget
+        </CashflowTabButton>
+        {costCentersEnabled && (
+          <CashflowTabButton active={activeTab === 'cost-centers'} onClick={() => handleTabChange('cost-centers')}>
+            Centri di Costo
+          </CashflowTabButton>
+        )}
+      </div>
+
+      {/* Tab panels — lazy mount with hidden */}
+      <div className={cn(activeTab !== 'tracking' && 'hidden', 'space-y-6')}>
+        <CashflowSection
+          expenseStats={expenseStats}
+          currentMonth={nowMonth}
+          currentYear={nowYear}
+        />
+        <ExpenseTrackingTab
+          ref={trackingTabRef}
+          allExpenses={allExpenses}
+          categories={categories}
+          loading={loading}
+          onRefresh={handleRefresh}
+        />
+      </div>
+
+      {mountedTabs.has('dividends') && (
+        <div className={cn(activeTab !== 'dividends' && 'hidden')}>
+          <DividendTrackingTab
+            dividends={dividends}
+            assets={assets}
+            loading={loading}
+            onRefresh={handleRefresh}
+          />
         </div>
+      )}
 
-        {/* Desktop TabsList — hidden on mobile/tablet.
-            Rendered only after costCentersEnabled is resolved so the full tab list
-            mounts in one paint instead of reflowing from 5 to 6 columns. */}
-        {costCentersEnabled === null ? (
-          // Placeholder that matches the TabsList height while settings load
-          <div className="hidden desktop:block h-10 w-full max-w-5xl rounded-md bg-muted animate-pulse" />
-        ) : (
-          <TabsList className={`hidden desktop:grid w-full max-w-5xl ${costCentersEnabled ? 'grid-cols-6' : 'grid-cols-5'}`}>
-            <TabsTrigger value="tracking" className="flex items-center gap-2">
-              <Receipt className="h-4 w-4" />
-              Tracciamento
-            </TabsTrigger>
-            <TabsTrigger value="dividends" className="flex items-center gap-2">
-              <Coins className="h-4 w-4" />
-              Dividendi &amp; Cedole
-            </TabsTrigger>
-            <TabsTrigger value="current-year" className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4" />
-              Anno Corrente
-            </TabsTrigger>
-            <TabsTrigger value="total-history" className="flex items-center gap-2">
-              <BarChart3 className="h-4 w-4" />
-              Storico Totale
-            </TabsTrigger>
-            <TabsTrigger value="budget" className="flex items-center gap-2">
-              <Target className="h-4 w-4" />
-              Budget
-            </TabsTrigger>
-            {costCentersEnabled && (
-              <TabsTrigger value="cost-centers" className="flex items-center gap-2">
-                <Layers className="h-4 w-4" />
-                Centri di Costo
-              </TabsTrigger>
-            )}
-          </TabsList>
-        )}
+      {mountedTabs.has('current-year') && (
+        <div className={cn(activeTab !== 'current-year' && 'hidden')}>
+          <CurrentYearTab
+            allExpenses={allExpenses}
+            loading={loading}
+            onRefresh={handleRefresh}
+          />
+        </div>
+      )}
 
-        <TabsContent value="tracking" className="mt-6" forceMount>
-          <motion.div
-            initial={false}
-            animate={activeTab === 'tracking' ? 'visible' : 'hidden'}
-            variants={tabPanelSwitch}
-          >
-            <ExpenseTrackingTab
-              allExpenses={allExpenses}
-              categories={categories}
-              loading={loading}
-              onRefresh={handleRefresh}
-            />
-          </motion.div>
-        </TabsContent>
+      {mountedTabs.has('total-history') && (
+        <div className={cn(activeTab !== 'total-history' && 'hidden')}>
+          <TotalHistoryTab
+            allExpenses={allExpenses}
+            loading={loading}
+            onRefresh={handleRefresh}
+            historyStartYear={cashflowHistoryStartYear}
+          />
+        </div>
+      )}
 
-        {mountedTabs.has('dividends') && (
-          <TabsContent value="dividends" className="mt-6" forceMount>
-            <motion.div
-              initial={false}
-              animate={activeTab === 'dividends' ? 'visible' : 'hidden'}
-              variants={tabPanelSwitch}
-            >
-              <DividendTrackingTab
-                dividends={dividends}
-                assets={assets}
-                loading={loading}
-                onRefresh={handleRefresh}
-              />
-            </motion.div>
-          </TabsContent>
-        )}
+      {mountedTabs.has('budget') && (
+        <div className={cn(activeTab !== 'budget' && 'hidden')}>
+          <BudgetTab
+            allExpenses={allExpenses}
+            categories={categories}
+            loading={loading}
+            historyStartYear={cashflowHistoryStartYear}
+            userId={user?.uid ?? ''}
+          />
+        </div>
+      )}
 
-        {mountedTabs.has('current-year') && (
-          <TabsContent value="current-year" className="mt-6" forceMount>
-            <motion.div
-              initial={false}
-              animate={activeTab === 'current-year' ? 'visible' : 'hidden'}
-              variants={tabPanelSwitch}
-            >
-              <CurrentYearTab
-                allExpenses={allExpenses}
-                loading={loading}
-                onRefresh={handleRefresh}
-              />
-            </motion.div>
-          </TabsContent>
-        )}
-
-        {mountedTabs.has('total-history') && (
-          <TabsContent value="total-history" className="mt-6" forceMount>
-            <motion.div
-              initial={false}
-              animate={activeTab === 'total-history' ? 'visible' : 'hidden'}
-              variants={tabPanelSwitch}
-            >
-              <TotalHistoryTab
-                allExpenses={allExpenses}
-                loading={loading}
-                onRefresh={handleRefresh}
-                historyStartYear={cashflowHistoryStartYear}
-              />
-            </motion.div>
-          </TabsContent>
-        )}
-
-        {mountedTabs.has('budget') && (
-          <TabsContent value="budget" className="mt-6" forceMount>
-            <motion.div
-              initial={false}
-              animate={activeTab === 'budget' ? 'visible' : 'hidden'}
-              variants={tabPanelSwitch}
-            >
-              <BudgetTab
-                allExpenses={allExpenses}
-                categories={categories}
-                loading={loading}
-                historyStartYear={cashflowHistoryStartYear}
-                userId={user?.uid ?? ''}
-              />
-            </motion.div>
-          </TabsContent>
-        )}
-        {costCentersEnabled && mountedTabs.has('cost-centers') && (
-          <TabsContent value="cost-centers" className="mt-6" forceMount>
-            <motion.div
-              initial={false}
-              animate={activeTab === 'cost-centers' ? 'visible' : 'hidden'}
-              variants={tabPanelSwitch}
-            >
-              <CostCentersTab />
-            </motion.div>
-          </TabsContent>
-        )}
-      </Tabs>
+      {costCentersEnabled && mountedTabs.has('cost-centers') && (
+        <div className={cn(activeTab !== 'cost-centers' && 'hidden')}>
+          <CostCentersTab />
+        </div>
+      )}
     </div>
   );
 }

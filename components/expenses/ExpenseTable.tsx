@@ -61,9 +61,10 @@ interface ExpenseTableProps {
   onEdit: (expense: Expense) => void;
   onRefresh: () => void;
   isDemo?: boolean;
+  pageSize?: number;
 }
 
-export function ExpenseTable({ expenses, onEdit, onRefresh, isDemo = false }: ExpenseTableProps) {
+export function ExpenseTable({ expenses, onEdit, onRefresh, isDemo = false, pageSize }: ExpenseTableProps) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
@@ -261,9 +262,10 @@ export function ExpenseTable({ expenses, onEdit, onRefresh, isDemo = false }: Ex
    * - endIndex = 10 + 10 = 20
    * - slice(10, 20) returns items 10-19 (indices), showing expenses 11-20 (1-indexed)
    */
-  const totalPages = Math.ceil(expenses.length / ITEMS_PER_PAGE);
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const itemsPerPage = pageSize ?? ITEMS_PER_PAGE;
+  const totalPages = Math.ceil(expenses.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
 
   /**
    * Teacher Comment: Three-State Sorting Cycle
@@ -306,7 +308,7 @@ export function ExpenseTable({ expenses, onEdit, onRefresh, isDemo = false }: Ex
    */
   useEffect(() => {
     setCurrentPage(1);
-  }, [expenses.length, sortBy]);
+  }, [expenses.length, sortBy, itemsPerPage]);
 
   /**
    * Why reset sort when expenses array changes?
