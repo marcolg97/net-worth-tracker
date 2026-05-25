@@ -1,5 +1,24 @@
 ## ✨ New Features
 
+- Redesigned the **AI Assistant (Assistente AI)** page with a cleaner, Trade Republic-inspired layout: the current net worth is now the dominant number at the top of the page — shown in large bold figures with the month-over-month variation, current-price note, and after-tax clarification — replacing the previous generic "How can I help you?" chat opener that looked identical to every other AI product
+- **Analysis mode switching** is now a persistent tab strip at the top of the conversation (Mese / Anno / YTD / Storico / Chat), replacing the hidden selector inside the composer — the most important decision is now visible at all times, not buried below the text input
+- The right column on desktop has been reorganized: Conversations and Memory are now two tabs inside a single card, with the context panel as a flat data block below — replacing the previous three separate stacked cards that had no clear hierarchy
+- The **"Come funziona" guide** now opens automatically the first time you visit the page (when you have no conversations yet) — explaining the five analysis modes, web search behavior, and automatic memory before you send your first message
+- Memory category badges (Goal, Preference, Risk, Fact) now use **theme-aware colors** — they adapt to your active color theme (Solar Dusk, Cyberpunk, Midnight Bloom, etc.) instead of using hardcoded green/blue/violet/amber that clashed with non-default themes
+
+- Added a **Top Expenses block** to the Cashflow Analysis tab — instantly see the largest individual expenses for any selected period. The "Spese Maggiori" card appears after the KPI summary, listing the top 5 expenses sorted by amount with date, category, subcategory, expense type, and optional notes. Tap "Show all (N)" to expand the full ranked list; the view automatically collapses and resets when you switch between periods or months
+
+- Redesigned the **Add Expense** dialog with a guided two-step flow: first pick the expense type from a visual card grid (Variable Expense, Fixed Expense, Debt / Installment, Income), then fill in only the fields that matter for that type — no more scrolling past installment or recurring fields for a simple purchase. The expense type picker uses the same design language as the Add Asset dialog: icon cards with a short description, animated step transitions, and a "← Change type" ghost button to go back without losing your context
+- Redesigned the **Add Asset** dialog with a guided two-step flow: first pick the asset type from a visual card grid (Stocks, ETFs, Bonds, Crypto, Cash, Real Estate, Commodities), then fill in only the fields that matter for that type — no more scrolling past irrelevant inputs. Ticker, ISIN, cost basis, TER, coupon details, and debt fields appear only when relevant to the chosen type
+
+- Added **"Esposizione Portfolio"** section to the Allocation page — a collapsible card showing how your portfolio is distributed across the underlying companies, sectors, and ETF providers, aggregated across all your ETFs plus direct stocks. See your true exposure to a single company (e.g. Nvidia) even when it's split across multiple ETFs like SWDA and CHIP
+- Added top company holdings tab: the 15 largest underlying-company exposures across your whole portfolio, with the percentage of your portfolio each represents
+- Added sector breakdown tab: how much of your portfolio is in Tecnologia, Salute, Finanza, Beni Voluttuari, etc., aggregated from the sector weights of every ETF you hold
+- Added ETF issuers tab: how much of your portfolio is managed by each provider (iShares, Vanguard, Xtrackers, Amundi, etc.), with the ETFs grouped under their respective family
+- Added per-row calculation drill-down on every exposure tab: click any row to see exactly how the number was computed — "5,30% di 50.000,00 € = 2.650,00 €" for each source ETF, with a total row when multiple sources contribute. No more black-box percentages
+- Added **benchmark comparison** to the Performance page — compare your portfolio's time-weighted return against four model portfolios: 60/40 (Global Equity + Bonds), All Weather (Ray Dalio), Buffett 90/10, and Golden Butterfly. The chart shows indexed growth of €100 from the start of the selected period; the summary table shows annualized TWR and total growth for each
+- Added **EUR conversion toggle** for benchmarks — "Converti benchmark in EUR" switch applies historical monthly USD/EUR exchange rates so the comparison accounts for currency impact (off by default; fetches data only when enabled)
+- Added benchmark composition detail — click the ⓘ button next to any benchmark pill to see the underlying ETFs, weights, and data source
 - Added 9 risk and risk-adjusted return metrics to the benchmark comparison table in the Performance section: Volatility, Sharpe Ratio, Sortino Ratio, Calmar Ratio, Max Drawdown, Best Month, Worst Month, and positive/negative month counts — making it easy to compare not just returns but the full risk profile of each portfolio against yours
 - Added two new model portfolios to the benchmark comparison: **Permanent Portfolio** (Harry Browne's classic 25% stocks / 25% long bonds / 25% gold / 25% short bonds) and **100% ACWI** (pure global equity index) — bringing the total from 4 to 6 model portfolios
 - Added AI narrative commentary to all periodic emails: each monthly, quarterly, and yearly summary email now includes a "Commento AI" section — a narrative analysis generated by the same AI assistant used in the app, with web search always active so the commentary can connect your portfolio performance to global macro events (interest rates, geopolitical news, market moves)
@@ -9,8 +28,108 @@
 - Added "Performance Asset Class" section to all summary emails, showing best and worst performing asset classes both by percentage change and by absolute euro change vs the previous period
 - Added manual send button in Settings → Report Email Mensili to preview the current month's summary email at any time without waiting for the end of the month
 - Added email recipient management in Settings: enable/disable the feature with a toggle, add or remove any number of recipient addresses
+- Added a confirmation dialog before logging out — prevents accidental sign-outs by asking "Esci dall'account?" before completing the action
 
 ## 🔧 Improvements
+
+- Redesigned the **Overview (Panoramica)** page with an asymmetric bento layout: the portfolio total is now displayed in a larger dominant typeface; the Patrimonio Liquido card shows an animated two-color donut chart (liquid vs illiquid split with a percentage label in the center, color-coded by your active theme); cashflow on desktop shows the savings ring alongside income and expenses side by side with month-over-month delta percentages; expanding the Fiscal Detail or the Liquid card detail now animates smoothly (height slides open) instead of snapping open instantly
+- The **Portfolio Composition** section on the Overview page now shows two focused charts (Asset Class and Per Asset) instead of three — the Liquidity chart has been removed since the same information is now shown directly in the Patrimonio Liquido hero card. Each chart legend now only shows slices that represent 5% or more of the portfolio, reducing visual noise for diversified portfolios
+- Fixed the composition chart legends showing raw euro values with a `%` sign (e.g. "164853.40%") — percentages now display correctly (e.g. "57.5%")
+
+- Redesigned the **Settings (Impostazioni)** page with a cleaner, Trade Republic-inspired layout: the Allocation tab now opens with a large bold hero metric showing the total percentage allocated across all asset classes — replacing the previous unlabelled percentage counter buried in a card header. The six individual asset-class cards (Equity, Bonds, Real Estate, Crypto, Commodities, Cash) are now a single unified flat list — each row shows the asset class name, current target, and an expand button; sub-categories expand inline below their row without opening a separate nested card. The Profile section fields are now arranged as labeled rows instead of a disconnected grid
+- Settings tab navigation on mobile and tablet now uses a **segmented pill control** — all five tabs (Allocazione, Preferenze, Spese, Dividendi, Aspetto) are visible at a glance with a smooth spring animation between them, replacing the previous dropdown that required two taps and hid the other options
+- Deleting an expense category with no linked transactions and syncing dividends now use **inline two-tap confirmation** — first tap arms the button, second tap executes (auto-disarms after 3 seconds), replacing the browser's native blocking dialog that interrupted the flow and could not be styled
+
+- AI Assistant **conversation messages** are now visually distinct at a glance: your messages appear right-aligned with a muted background; assistant responses appear full-width with a card background — no more identical-looking bubbles that required reading the "Tu / Assistente" label to tell apart
+- AI Assistant **net worth hero** now shows a clear provenance row: "vs. last month · current prices · after estimated taxes" — making it immediately clear what the number represents and how the variation is measured
+- AI Assistant now correctly prevents horizontal scrolling on tablet and mobile when conversations contain long messages or tables — tables still scroll internally when wider than the screen
+
+- The tab switcher on the **FIRE e Simulazioni** page on mobile now uses a segmented pill control — all four tabs (FIRE, Coast, Monte Carlo, Obiettivi) are visible at a glance with a smooth spring animation between them, replacing the previous dropdown that required two taps and hid the other options
+
+- Redesigned the **Goals (Obiettivi)** tab with a cleaner, Trade Republic-inspired layout: the total allocated portfolio value now dominates the screen as a large bold hero metric — the answer to "how much of my wealth is mapped to a goal?" is visible in the first two seconds without scrolling. Flat secondary rows below show active goal count, unallocated value, and average progress across all goals with targets
+- Goals are now displayed as a single flat list — each row shows the goal name (with color dot), current allocated value, and progress percentage; tapping a row expands it inline to show the progress bar, assigned assets table, recommended allocation comparison bars, notes, and action buttons. Previously goals appeared twice: once as a summary card and again as a detail card, tripling the visual noise
+- Goal deletion now uses **inline two-tap confirmation** — first tap arms the button, second tap executes (auto-disarms after 3 seconds). Previously the browser's native blocking dialog interrupted the flow
+- The allocation pie chart has been removed from the Goals tab — the same proportional information is already conveyed by the currency values in the flat goal list, without the added interaction complexity
+
+- Redesigned the **Monte Carlo** tab with a cleaner, Trade Republic-inspired layout: the Success Rate (probability of not running out of money) now dominates the screen as a large bold hero metric — always visible before and after running a simulation, showing `--` with a clear call to action on first load. A flat secondary row below shows the median final portfolio value once a simulation has run
+- The Monte Carlo settings panel is now split into two tiers: core inputs (starting wealth, years, annual withdrawal, allocation) are always visible, while market parameters (return and volatility per asset class, number of simulations) are collapsed by default and open automatically if any value differs from the defaults — reducing the form from 18 simultaneous fields to the 6 that matter most
+- The Monte Carlo tab mode switcher (Single Simulation / Scenario Comparison) now uses the same smooth animated pill control as the rest of the app — a spring animation slides between modes instead of a hard visual swap
+- The "How Monte Carlo simulations work" explainer is now collapsed in a disclosure section at the bottom of the tab, not occupying the top of the screen where users expect data. For returning users the tab now opens on the results immediately
+- Chart colors across all Monte Carlo charts (percentile fan, distribution histogram, scenario overlay, scenario distribution side-by-sides) now adapt to the active color theme — previously all colors were hardcoded and clashed with Solar Dusk, Cyberpunk, Midnight Bloom, and other themes
+- Chart tooltips across all Monte Carlo charts now adapt to dark mode — previously tooltip backgrounds and text were hardcoded and became invisible or unreadable in dark themes
+
+- Redesigned the **FIRE Calculator** tab with a cleaner, Trade Republic-inspired layout: the FIRE Number now dominates the screen as a large bold hero metric — the answer to "how close am I to financial independence?" is visible in the first two seconds without scrolling through a form
+- The FIRE settings panel (withdrawal rate, planned expenses, primary residence toggle) is now collapsed by default and opens automatically when you make a change — the data you care about is always visible first, settings appear only when needed
+- Added an **"Annulla"** button to the FIRE settings panel — reset any unsaved change back to the last saved values in a single tap, without having to remember what the original number was
+- The passive income section (Reddito Passivo Sostenibile) now uses a flat list layout — monthly and daily allowances appear as compact rows below the annual figure, replacing the previous three identical cards where nothing stood out
+- Years of expenses breakdown now shows total, liquid, and illiquid figures in a clear hierarchy — "di cui liquidi" and "di cui illiquidi" are explicit subsets of the total, eliminating the previous confusing layout where "illiquid" appeared to be a subset of "liquid"
+- The scenario projection section (Bear / Base / Bull) now uses your active color theme for all chart lines, reference lines, scenario card titles, and result numbers — previously all colors were hardcoded and clashed with Solar Dusk, Cyberpunk, Midnight Bloom, and other themes
+- Chart tooltips across the FIRE section now adapt to dark mode — previously the month label and tooltip text were hardcoded dark and became invisible against the dark tooltip background
+
+- Redesigned the **Coast FIRE** tab with a cleaner, Trade Republic-inspired layout: the Coast FIRE number now dominates the screen as a large bold hero metric — the answer to "have I reached Coast FIRE?" is visible in the first two seconds without scrolling
+- The Coast FIRE settings panel is now collapsed by default and opens automatically when you make a change — projection results are always visible first, settings appear only when needed
+- Added an **"Annulla"** button to the Coast FIRE settings panel — reset any unsaved change back to the last saved values in a single tap, without having to remember what the original number was
+- The Coast FIRE hero now shows four summary rows beneath the main number: overall progress toward the Coast FIRE target, liquid-only progress (assets you could actually retire on), total net worth, and liquid net worth — giving an immediate read on both "am I there?" and "how much is actually usable?"
+- Coast FIRE chart colors now adapt to your active color theme — previously all four scenario lines (Bear, Base, Bull, Target) used hardcoded colors that clashed with Solar Dusk, Cyberpunk, Midnight Bloom, and other themes
+- Chart tooltips on the Coast FIRE projection chart now adapt to dark mode — scenario names and month labels are readable in all six color themes
+
+- Redesigned the **Hall of Fame** page with a cleaner, Trade Republic-inspired layout: an absolute record hero block now opens the page showing your all-time best month and best year in large bold numbers — the answer to "what's my personal record?" is visible in the first two seconds without scrolling
+- Hall of Fame now shows rankings as a single focused card with two pill selectors (Monthly / Annual and Patrimonio / Entrate / Spese) — replacing the previous four identical side-by-side tables where nothing stood out and every section needed to be scrolled separately
+- Added **mobile section navigation** to Hall of Fame — a three-section pill (Overview / Monthly / Annual) shows one section at a time on mobile, replacing the previous layout that stacked all four monthly ranking tables and all four annual ranking tables in a single continuous scroll
+- Desktop ranking tables in Hall of Fame no longer have a fixed height with internal scroll — the full table is now visible at once and the page scrolls naturally, eliminating the double-scroll trap
+- Mobile ranking lists in Hall of Fame now show the top 5 entries immediately, with a "Vedi tutti" expand button for the rest — replacing the previous full dump of up to 20 cards per section
+- The current-period spotlight section in Hall of Fame now uses a flat list layout — removing the nested card boxes that appeared inside each spotlight item (card-within-card pattern)
+- The note trigger icon in Hall of Fame ranking rows is now hover-only on desktop and always visible on touch — it previously occupied a permanent 40×40px space in every row regardless of whether a note existed, wasting vertical space on mobile
+- Added **2-click inline delete confirmation** to the Hall of Fame note editor — first click arms the button, second click executes (auto-disarms after 3 seconds). Previously the delete button executed immediately without any confirmation
+- Redesigned the **History (Storico)** page with a cleaner, more narrative structure: the page now opens with a hero block showing your current net worth, total growth since tracking began, and estimated CAGR — the answer to "am I growing fast enough?" is visible in the first two seconds, before any scrolling
+- **Doubling Time analysis** is now the first section you see after the main chart — it was previously at the bottom of the page despite being the most distinctive and informative analysis
+- Chart colors on the **History page** are now theme-aware across all six color themes — previously the charts always used hardcoded blue/green/amber regardless of the active theme (Solar Dusk, Cyberpunk, Midnight Bloom, etc.)
+- Multi-series charts on the History page now show a **legend on mobile** — a compact row of colored dots and labels appears below each chart, replacing the previous behavior of hiding the legend entirely on small screens
+- The **"Lavoro & Investimenti"** section on the History page now shows a clear setup prompt when labor income categories haven't been configured in Settings — previously the entire section silently disappeared with no explanation or link to enable it
+- Year-over-year data and raw monthly snapshots are now in a **collapsible "Dati storici" section** (collapsed by default) — reduces page length and focuses the main view on the narrative charts, while keeping the data one tap away
+- The view toggles on the History page (**Annual / Monthly** and **Geometric / Thresholds**) now use the same smooth segmented pill control as the Performance, Patrimonio, and Cashflow pages — replacing the previous two-button pair that used different visual styling
+- Fixed the **Doubling Time summary card** wrapping the date range and value progression (e.g. "01/23 – 10/24 · €164k → €201k") in a way that caused overflow on narrow screens — the text is now left-aligned below the card title where it has room to wrap naturally
+
+- Redesigned the **Performance (Rendimenti)** page with a cleaner, Trade Republic-inspired layout: each metric section now has one dominant number at the top (Time-Weighted Return for Returns, Sharpe Ratio for Risk, Net Cash Flow for Context, Net YOC for Dividends) displayed large and bold — replacing the previous grid of 16 equal-weight cards where nothing stood out
+- Performance metric definitions now open as **inline popovers** (tap the ? icon on any metric row) — replaced the previous custom tooltip that could be clipped on mobile
+- Period selector on the **Performance page on mobile** now uses the same segmented pill control as Patrimonio and Cashflow — all five periods (YTD / 1A / 3A / 5A / Stor.) are visible at a glance with a smooth spring animation between them, replacing the previous dropdown
+- Custom date range on the **Performance page** is now shown as a dismissible chip below the period selector ("Periodo: DD/MM – DD/MM ✕") instead of occupying a permanent greyed-out slot in the period bar
+- Chart series colors on the Performance page are now **theme-aware** — they use the active color theme's chart palette instead of hardcoded defaults that clashed with Solar Dusk, Cyberpunk, and other non-default themes
+- Rolling CAGR and Rolling Sharpe charts now **always appear** with an explanatory message when the period has insufficient data — previously the cards silently disappeared, giving no indication of why
+- The **Underwater Drawdown chart** is now significantly more visible in dark color themes — the fill area is deeper and the boundary line is bolder, making drawdown periods easy to identify even in Solar Dusk and Midnight Bloom dark modes
+
+- Merged the "Anno Corrente" and "Storico Totale" tabs in Cashflow into a single **"Analisi"** tab — choose between current year, a specific year (with optional month filter), or full history from a single period selector. A "Ripristina" button appears whenever a non-default period is active, returning to the current year in one tap
+- Cashflow tab navigation on mobile now uses a **smooth sliding pill control** — all tabs are visible at a glance with a spring animation between them, replacing the previous horizontal-scroll tab bar that required swiping to discover hidden tabs
+- Expense deletion in the Cashflow tracking tab now uses **inline two-tap confirmation** — first tap arms the button, second tap executes (auto-disarms after 3 seconds) — replacing the browser's native blocking pop-up dialog
+- Expense tracking tab now shows a **structural skeleton** while data loads — mirrors the real layout (KPI cards, filters, transaction list) instead of a bare spinner
+- Expense tracking tab filters are now **collapsed by default** — the transaction list is immediately visible when opening the tab, without having to scroll past four filter inputs
+- Expense tracking tab now shows a **"Mostra altri" button** instead of silently capping the mobile list at 20 items — tap to load more in batches of 20
+- Budget category subcategory rows now use a **neutral top border** for indentation instead of the previous left accent bar, which was inconsistent with the rest of the app's design
+
+- Redesigned the **Allocation (Allocazione)** page with a cleaner, Trade Republic-inspired layout: each asset class now shows its current value as a large dominant number, with current %, target %, and the buy/sell delta as a compact secondary line — replacing the previous dense four-section cards (eyebrow label, progress bar, value grid, difference banner) where no single number stood out. On mobile, allocation items are now a flat scrollable list instead of a card grid, making the drill-down navigation clearer. On desktop, the eight-column flat table is now a five-column table where value and percentage are stacked in the same cell, reducing visual noise while keeping all the same information
+- The action signal on each allocation item (COMPRA / VENDI / OK) is now a compact colored chip — no more color-coded progress bars filling the card; the chip communicates the rebalancing action at a glance
+- The Allocation page skeleton (shown while data loads) now accurately mirrors the real page layout — previously it showed a different card structure that caused a visible layout shift when data arrived
+- Portfolio Exposure bars in the Allocation page are now thinner (`h-1.5` track) with more vertical padding between rows, making the section easier to scan
+
+- The section switcher on the **Patrimonio** page (Gestione Asset / Anno Corrente / Storico) on mobile now shows all three options at a glance as a segmented pill control — previously a dropdown that required two taps and hid the other sections. Switching sections now takes a single tap, and the active section animates with a smooth slide transition
+
+- Added **price trend sparklines** to individual asset cards on mobile — each card now shows a compact 12-month trend chart immediately below the value and gain/loss figures, using the same visual style as the Overview hero sparkline. The chart uses total value (not unit price) for cash accounts and fixed-price assets like private equity, where the unit price is always €1 and quantity carries the signal
+- The **"Totale Patrimonio"** summary card on the asset management page is now centered on mobile, giving the key portfolio metric a cleaner hero-number feel
+
+- Redesigned the **Patrimonio (Asset Management)** page with a cleaner, Trade Republic-inspired layout: portfolio total and individual asset values are now displayed as dominant numbers, with gain/loss shown as a compact colored secondary line below — eliminating the side-by-side layout that caused values to overflow on narrow screens
+- Added **column sorting** to the desktop asset table — click Valore Totale, G/P%, Peso%, Nome, or Classe to sort; click again to reverse direction
+- Added a **compact 3-month summary** for the Current Year and History tabs on mobile: shows the last three available months per asset with color-coded month-over-month changes, replacing the previous "desktop recommended" banner that provided no useful information on mobile
+- The **expand/collapse chevron** on mobile asset cards now has a visible bordered button style, making it clearly recognizable as an interactive control
+- Asset management now uses **2-click inline delete confirmation** — first click arms the button ("Conferma?"), second click executes; auto-disarms after 3 seconds — replacing the browser's native `confirm()` dialog
+- Asset cards on mobile now correctly truncate long instrument names and always show the asset class badge and chevron — previously long names could push controls off screen
+- Asset management table and cards now correctly follow the active color theme — previously some elements used hardcoded gray colors that didn't adapt to Solar Dusk, Cyberpunk, and other themes
+- Asset history table summary columns (Mese Prec. %, YTD %, Da Inizio %) no longer show colored left-border accents — replaced with a subtle neutral background that works across all themes
+- The "From Start %" column in asset history tables is now correctly labeled "Da Inizio %"
+- Gain/loss (G/P) is now shown for assets that have a cost basis but no tax rate configured — previously the metric was hidden unless both fields were set
+
+- Improved the **Edit Expense** form: the expense type is now shown as a read-only badge instead of a disabled dropdown, making it immediately clear that the type is fixed after creation. The form opens directly in the relevant field view without requiring a type selection step
+- Improved the **Edit Asset** form to show only the fields relevant to the asset type being edited — previously all fields were always visible regardless of type, so editing a cash account showed bond coupon fields, TER, and ISIN. The form now matches what you see when adding that asset type
+- Added gross TTM dividend amount ("Dividendi/Cedole TTM (Lordo)") to the Yield on Cost card in the Dividends & Coupons page — the numerator is now visible alongside the YOC percentage, making it clear which income is being measured
 
 - Improved the positive/negative month counters in the benchmark comparison table: values now display as "X/Y" (e.g. "29/40" or "30/41") showing how many months out of the total observations were positive or negative — makes it immediately clear why the portfolio and benchmark totals can differ (the portfolio uses the first snapshot as a baseline and has one fewer return observation than the benchmark)
 - Improved Sharpe and Sortino ratio accuracy in the benchmark comparison table: ratios now use the arithmetic mean of ECB deposit facility rates over the exact evaluation period instead of the user's configured rate — a 5-year comparison now reflects the actual rate environment (which ranged from -0.50% in 2020 to +4.00% in 2023–2024) rather than applying today's rate retroactively. The dynamic footnote shows which rate was used and for how many months. The Sharpe ratio in the main KPI card is unchanged.
@@ -21,19 +140,56 @@
 - Improved the Net Worth Evolution chart in History: the line now renders clean and continuous without dots on every data point, matching the visual style of the area charts below it; note indicators (amber markers) are still shown on snapshots with attached notes
 - Improved error handling in Cashflow and Budget so temporary loading or save issues surface clearer feedback while keeping the page usable
 - Improved resilience when refreshing dashboard overview data after account changes, with safer fallback handling for non-critical failures
+- Redesigned the dashboard navigation: the sidebar now hosts the user profile, theme selector (light / dark / system), and logout in a single dropdown in the footer, replacing the separate top header bar. The Assistente AI entry has been promoted to a quick-access banner in the same footer
+- Redesigned the mobile bottom navigation as a centered floating pill bar with rounded corners and a smoother active-tab transition — replacing the previous full-width fixed bar
+
+## 🔧 Improvements
+
+- The **net worth variation chips** on the Overview hero (month and YTD) are now larger and easier to read — font size increased from 11px to 15px with proportionally larger icons and more padding
 
 ## 🐛 Bug Fixes
 
+- Fixed the **Asset Class pie chart** in the Overview Composizione section ignoring your active color theme — it now uses the same theme-aware palette as every other chart in the app (Solar Dusk, Cyberpunk, Midnight Bloom, etc.)
+- Fixed a browser console warning (`The width(-1) and height(-1) of chart should be greater than 0`) appearing on every visit to the Overview page — caused by the compact pie charts using `ResponsiveContainer` with a fixed-size parent; they now use explicit dimensions and the warning is eliminated
+
+- Fixed the savings ring chart on the Overview page restarting its animation every time the Fiscal Detail or Patrimonio Liquido sections were expanded or collapsed — the ring now animates exactly once on page load and stays still afterward
+- Fixed the composition charts on the Overview page showing two legends at the same time (one inside the chart, one alongside it) — now only one legend is shown per chart
+
+- Fixed the Allocation tab in Settings expanding the Equity section by default — all asset-class rows now start collapsed, reducing visual noise when opening the tab
+- Fixed expanding or collapsing an asset-class row in Settings triggering the "Anteprima attiva: modifiche non salvate" indicator — the open/close state of a row is now correctly treated as a visual preference and no longer treated as an unsaved setting change
+- Fixed allocation percentage and fixed-amount input fields in Settings being too narrow to display values like "78,13" or "2.500 €" without clipping — inputs are now wide enough to show two-decimal values without overflow
+- Fixed the Settings page loading skeleton showing four tab columns on desktop instead of five, causing a visible layout shift when the real page replaced it
+
+- Fixed the asset assignment dialog in Goals allowing allocations beyond 100% when an asset is already fully distributed across goals — if two goals each hold 50% of the same asset, the dialog now correctly caps each goal's assignment at its current 50% and shows "Nessuna quota libera" instead of the misleading "50% disponibile"
+- Fixed the asset assignment dialog not resetting its search field, selected asset, and percentage input when reopened — stale values from the previous open were silently carried over
+- Fixed the Goals tab showing hardcoded gray colors on all six color themes — all elements now use semantic design tokens and correctly adapt to Solar Dusk, Cyberpunk, Midnight Bloom, and other themes
+
+- Fixed Cashflow "Analisi" tab showing all-time data when switching from "Storico" to "Anno" mode — the selected year now initializes correctly when entering year mode, so the displayed data matches the year shown in the selector
+- Fixed Cashflow trend charts ("Trend storici") not respecting the history start year configured in Settings — the "N anni di dati" count and all chart data now only include years from the configured start year onward
+
+- Fixed single stocks not appearing in the Sectors tab of Portfolio Exposure — direct stock positions now contribute to the sector breakdown based on their Yahoo Finance sector classification. Previously, only ETF holdings were aggregated into sectors; individual stocks were silently excluded even though they appeared correctly in the Top Holdings tab
+- Fixed stale data appearing in the Add Asset dialog when opening it a second time immediately after adding an asset — all fields now reset cleanly on every open
+
+- Fixed benchmark comparison table showing different TWR and total growth values than the main KPI cards on the Performance page — values now use the same pre-computed metrics as the header cards
+- Fixed missing `+` prefix on positive portfolio "Total Growth" values in the benchmark comparison table
+- Fixed the "Aggiorna" button in the new Esposizione Portfolio section so it forces a fresh server-side computation. Previously it triggered only a client-side re-fetch, which returned the same cached data when the portfolio composition hadn't changed
 - Fixed the YOC (Yield on Cost) metric appearing in the Dividends page when no dividends have been received yet — the card now only shows when at least one dividend payment has actually landed in the last 12 months
 - Fixed AI narrative in emails occasionally showing a collapsible `···` element at the top — Claude sometimes emits HTML `<details>` blocks that email clients render as interactive widgets; these are now stripped before sending
 - Fixed italic text (`*text*`) in AI email narratives appearing with raw asterisks instead of being formatted
 - Fixed the "Asset Distribution" pie chart on mobile being clipped when a portfolio has many assets — the legend now shows a maximum of 5 items (filtering entries below 7% first), preventing the chart from being cut off in portrait mode
 - Fixed dividend income entries not being automatically created in Cashflow when manually adding a dividend with a past payment date — the expense now appears immediately after saving, without waiting for the nightly sync
+- Fixed dividends paid today not appearing in the Dividends & Coupons page on servers in non-UTC timezones (e.g. CEST/UTC+2) — a midnight-UTC payment timestamp was incorrectly treated as "future", causing today's dividends to vanish from both "received" and "upcoming" lists
 
 ## 🔒 Security
 
 - Updated dependencies to resolve a critical arbitrary code execution vulnerability in protobufjs and a high-severity denial of service vulnerability in Next.js server components; Next.js updated to 16.2.4
+- Pinned PostCSS to `^8.5.14` via npm `overrides` to resolve a moderate XSS vulnerability (GHSA-qx2v-qp2m-jg93) in the version bundled by Next.js — deduplicates PostCSS across the whole dependency tree (Next.js, Tailwind, Vite)
 
 ## 📚 Documentation
 
 - Updated SETUP.md, VERCEL_SETUP.md, and DOCKER.md with Resend configuration instructions and notes on sender domain limitations (shared domain vs custom domain)
+
+## 🏗️ Technical
+
+- Migrated all React Hook Form `watch()` calls to `useWatch()` across the four main form dialogs (Add/Edit Asset, Add/Edit Expense, Category Management, Dividend) — makes these components fully compatible with the React 19 Compiler, which can now memoize them automatically instead of skipping them entirely. In practice this means fewer re-renders on every keystroke or toggle in these dialogs, particularly noticeable on mobile
+- Fixed missing accessible description on the Add/Edit Dividend dialog (Radix `DialogDescription` warning)
