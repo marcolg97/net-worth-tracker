@@ -435,17 +435,8 @@ export default function DashboardPage() {
                   Sintesi Patrimoniale
                 </p>
 
-                {/* Main value: liquid net worth after estimated taxes */}
-                <OverviewAnimatedCurrency
-                  value={liquidNetTotal}
-                  animateOnMount={true}
-                  startDelay={105}
-                  duration={390}
-                  className="text-[36px] font-bold font-mono tracking-[-0.025em]"
-                />
-
                 {/* 3-row breakdown + Patrimonio Totale Lordo footer */}
-                <div className="mt-3 pt-3 border-t border-border divide-y divide-border">
+                <div className="pt-3 border-t border-border divide-y divide-border">
                   {[
                     {
                       label: 'Liquidità',
@@ -523,12 +514,6 @@ export default function DashboardPage() {
                         className: 'text-foreground',
                         prefix: '',
                       },
-                      {
-                        label: 'Pat. Netto Totale',
-                        value: overview.metrics.netTotal,
-                        className: 'text-foreground',
-                        prefix: '',
-                      },
                     ].map(row => (
                       <div key={row.label} className="flex items-center justify-between py-[7px]">
                         <span className="text-[14px] text-muted-foreground">{row.label}</span>
@@ -537,6 +522,14 @@ export default function DashboardPage() {
                         </span>
                       </div>
                     ))}
+
+                    {/* Concluding row: Pat. Netto Totale — styled prominently as the bottom-line figure */}
+                    <div className="flex items-center justify-between py-[9px]">
+                      <span className="text-[14px] font-semibold text-foreground">Pat. Netto Totale</span>
+                      <span className="text-[14px] font-bold font-mono tabular-nums text-foreground">
+                        {cachedFormatCurrencyEUR(overview.metrics.netTotal)}
+                      </span>
+                    </div>
                   </div>
                 )}
               </CardContent>
