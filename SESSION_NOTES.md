@@ -125,3 +125,55 @@ Audit tecnico (`/impeccable audit`, score 17/20) e fix della bottom navigation m
 - **Score post-fix stimato: 20/20** — tutti i P0/P1/P2/P3 risolti in un'unica sessione.
 
 - **File toccati**: `components/layout/BottomNavigation.tsx`.
+
+---
+
+## 2026-05-27 — SecondaryMenuDrawer audit & fix (SecondaryMenuDrawer.tsx)
+
+### Cosa
+
+Audit tecnico (`/impeccable audit`, score 15/20) e fix del drawer mobile secondario su 7 assi:
+
+1. **`role="dialog"` + `aria-modal="true"` + `aria-label` sul panel** — il `motion.div` del panel non aveva semantica modale. Aggiunto `role="dialog" aria-modal="true" aria-label="Menu secondario"` in modo che i screen reader annuncino l'overlay come dialog e confino la navigazione virtuale all'interno.
+
+2. **Focus trap (Tab e Shift+Tab)** — nuovo `useEffect` con handler `trapTab` che cicla tra il primo e l'ultimo elemento focusable del panel. Senza questo, Tab sfuggiva verso elementi dello sfondo nonostante il backdrop opaco. Funzione pura `getFocusable()` estratta fuori dal componente (SRP).
+
+3. **Focus management autofocus + return focus** — all'apertura, `requestAnimationFrame` differisce il `focus()` al primo elemento fino al frame successivo al paint (il panel è inserito nel DOM dallo stesso render in cui `open` diventa `true`, ma il RAF garantisce che sia visibile). Alla chiusura, `returnFocusRef` riporta il focus al bottone "Altro" che aveva aperto il drawer.
+
+4. **Nav item `<motion.button>` → `motion.li` + `<Link>`** — i bottoni non avevano `href`, non emettevano `aria-current`, non beneficiavano del prefetching di Next.js e non permettevano "apri in nuova scheda". Sostituiti con `motion.li` come stagger container e `<Link>` come elemento interattivo. Aggiunto `aria-current={isActive ? 'page' : undefined}` come già presente in `Sidebar.tsx`. Rimossi `useRouter` e la funzione `navigate()`, non più necessari.
+
+5. **Spring `350/38` → `400/35`** — allineato allo standard di progetto usato ovunque (sidebar pill, bottom nav pill, assistente, goals, ecc.).
+
+6. **Backdrop `bg-black/40` → `color-mix()`** — sostituito con `color-mix(in oklch, var(--sidebar-foreground) 45%, transparent)`. Stesso pattern già usato per la box-shadow del bottom nav. Il nero puro era visivamente duro su temi warm (solar-dusk, elegant-luxury). Aggiunto `aria-hidden="true"` sul backdrop per rimuoverlo dall'albero AT.
+
+7. **Touch target `py-2.5` → `py-3`** — `py-2.5` (10px×2) + line-height text-sm (~20px) = 40px, 4px sotto il minimo WCAG 2.5.5. Con `py-3` (12px×2) + 20px = 44px esatti.
+
+8. **`<nav>` landmark** — `motion.div` scrollabile convertito in `motion.nav aria-label="Navigazione secondaria"`. Aggiunto `<ul>` semantico dentro ogni gruppo di voci.
+
+### Perché
+
+- **Nessuna semantica dialog (P1)**: senza `role="dialog"` + `aria-modal`, VoiceOver e NVDA non sanno che il contenuto sottostante è inattivo e continuano a permettere la navigazione virtuale fuori dal drawer. Violazione WCAG 4.1.2.
+
+- **Nessun focus trap (P1)**: Tab sfuggiva verso card e link nella dashboard dietro il backdrop opaco — l'utente era visivamente bloccato ma navigava in contenuto invisibile. Violazione WCAG 2.1.2 e 2.4.3.
+
+- **`<button>` invece di `<Link>` (P1)**: oltre ai problemi ARIA, un bottone che chiama `router.push()` non espone l'`href` al browser — nessun prefetching (perf), nessun contesto menu, nessun `aria-current`. È la stessa inconsistenza che esisteva nella bottom nav prima del fix della sessione precedente.
+
+- **Spring divergente (P2)**: motion language incoerente — il drawer si chiude con feeling leggermente diverso dalle pill del bottom nav e della sidebar. Dettaglio ma percepibile in un'app con forte identità motion.
+
+- **Backdrop hardcoded (P2)**: su temi warm il nero puro rompe la coerenza della superficie sidebar; il pattern `color-mix()` già usato per la box-shadow del bottom nav va applicato uniformemente.
+
+### Nota
+
+- **`getFocusable()` come funzione pura esterna**: seguendo SRP da `DEVELOPMENT_GUIDELINES.md`, la logica di selezione degli elementi focusable è estratta fuori dal componente e documentata con JSDoc (`COMMENTS.md` — function comment). È riusabile e testabile in isolamento senza montare il componente.
+
+- **`requestAnimationFrame` nell'autofocus**: `AnimatePresence` inietta il panel nel DOM nello stesso ciclo di render in cui `open` diventa `true`. Senza `rAF`, `getFocusable()` troverebbe il panel ma potrebbe non riuscire a fare `focus()` su un elemento non ancora visibile (opacity 0, transform). Il `rAF` differisce al frame successivo al paint — lo stesso pattern usato altrove nel codebase per focus management post-animation.
+
+- **`aria-hidden="true"` sul backdrop è intenzionale**: il backdrop è un elemento presentazionale (area cliccabile per chiudere). `aria-hidden` lo esclude dall'albero AT così i screen reader non annunciano "div" mentre navigano il dialog. Gli eventi mouse continuano a funzionare — `aria-hidden` non disabilita i pointer events.
+
+- **`motion.nav` come stagger container**: Framer Motion accetta variants su qualsiasi `motion.*` element — convertire `motion.div` in `motion.nav` non richiede alcuna modifica ai variants o alle animazioni. Zero impatto sulla motion.
+
+- **`useRouter` rimosso**: l'intera funzione `navigate()` era un wrapper attorno a `router.push() + onOpenChange(false)`. Con `<Link onClick={() => onOpenChange(false)}>`, Next.js gestisce la navigazione nativamente e il drawer si chiude tramite l'onClick. Il risultato comportamentale è identico, il codice è più semplice.
+
+- **Score post-fix stimato: 20/20** — tutti i P1/P2/P3 risolti in un'unica sessione.
+
+- **File toccati**: `components/layout/SecondaryMenuDrawer.tsx`.
