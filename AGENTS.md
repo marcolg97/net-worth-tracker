@@ -152,10 +152,14 @@ For architecture and current product status, see [CLAUDE.md](CLAUDE.md).
 - Runs server-side — use `adminDb` directly, not client SDK (`getUserSnapshots` etc. require browser auth)
 - All 5 period builders return `AssistantMonthContextBundle`; `selector.month` encoding: `>0`=monthly, `0`=year, `-1`=YTD, `-2`=history. Quarterly: `selector = { year, month: quarter * 3, quarter }`
 - `includeDummySnapshots` flows differently: `stream/route.ts` reads from `body.preferences`; `context/route.ts` must re-read from `getAssistantMemoryDocument()` (GET has no body)
+- `fetchSettings` returns only the fields needed for context building (`dividendIncomeCategoryId`, `cashflowHistoryStartYear`, `targets`) — do NOT expand it to full `AssetAllocationSettings`; add fields here only when a context builder actually needs them
+- `buildTargetAllocation` normalizes `AssetAllocationTarget` to the bundle shape: `subTargets` can be `number` (legacy, % of asset class) or `SubCategoryTarget` (new, object with `.targetPercentage`); both are normalized to plain `number` so prompt builders need no special-casing
+- When adding a new required field to `AssistantMonthContextBundle`, update ALL 5 builders AND any test fixtures that construct the type (e.g. `__tests__/assistantGoalEvaluation.test.ts`); TypeScript will catch missing fields in fixtures but only if the field is non-optional
 
 ### Assistant Prompt Builder (`formatBundleForPrompt`)
 - Always include `--- ALLOCAZIONE CORRENTE ---` from `currentSnapshot.byAssetClass` before the movers section — without it Claude hallucinates "unclassified" gaps for stable asset classes
 - Adding a new field to the prompt requires reading it from `bundle` explicitly — `formatBundleForPrompt` destructures named fields only; new fields are silently missing if not explicitly added
+- `--- ALLOCAZIONE TARGET vs CORRENTE ---` section is rendered when `bundle.targetAllocation` is non-null AND `currentSnapshot.byAssetClass` exists. Shows attuale %, target %, and gap in p.p. per asset class; sub-categories show their portfolio-level target (`subTargetPct / 100 * assetClassTarget`) so all comparisons are on the same scale
 
 ### Assistant Thread Store
 - `deleteAssistantThread` must delete `messages` subcollection in batches (≤400 docs) before deleting parent — Admin SDK does not cascade-delete subcollections

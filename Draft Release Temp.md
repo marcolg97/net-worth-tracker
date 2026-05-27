@@ -14,6 +14,7 @@
 
 ## 🔧 Improvements
 
+- **AI assistant now knows your allocation targets** — the assistant receives your configured target allocation (from Settings → Allocation) in every analysis. When you use the new "Allocazione vs target" suggested prompt chip, it compares your current portfolio allocation against your targets class by class and sub-category by sub-category, calculates the gap in percentage points, and suggests which areas to prioritize for your next purchase to get back on track
 - **Year-over-year variation chart is now always visible** in the History page — it was previously hidden inside a collapsed "Appendix" section that required an extra click to open. It now appears directly in the Growth Drivers section alongside the savings and work/investment charts
 - **Monthly snapshot log removed from History** — the grid showing the last 6 raw snapshots was redundant; the same data (with notes) is accessible through the snapshot search dialog already present in the page header
 - **History "Work & Investments" chart now respects your color theme** — the three trend lines (income earned, saved from work, investment growth) previously used fixed colors that didn't change when switching themes. They now follow the active theme palette like all other charts in the app
