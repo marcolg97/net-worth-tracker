@@ -71,6 +71,8 @@ import { CreateManualSnapshotModal } from '@/components/CreateManualSnapshotModa
 import { SnapshotSearchDialog } from '@/components/history/SnapshotSearchDialog';
 import { CustomChartDot } from '@/components/history/CustomChartDot';
 import { ExportPDFButton } from '@/components/dashboard/ExportPDFButton';
+import { PageContainer } from '@/components/layout/PageContainer';
+import { PageHeader } from '@/components/layout/PageHeader';
 import {
   LineChart,
   Line,
@@ -454,17 +456,12 @@ export default function HistoryPage() {
   };
 
   return (
-    <div className="space-y-6 max-desktop:portrait:pb-20">
-      {/* Page header */}
-      <div className="pb-4 border-b border-border">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div className="flex-1">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest mb-1">Patrimonio</p>
-            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Storico</h1>
-            <p className="mt-1 sm:mt-2 text-sm sm:text-base text-muted-foreground">
-              Analizza l&apos;evoluzione del tuo patrimonio (lordo) nel tempo
-            </p>
-          </div>
+    <PageContainer>
+      <PageHeader
+        label="Patrimonio"
+        title="Storico"
+        description="Analizza l'evoluzione del tuo patrimonio (lordo) nel tempo"
+        actions={
           <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto sm:items-center">
             <ExportPDFButton
               snapshots={snapshots}
@@ -491,8 +488,8 @@ export default function HistoryPage() {
               Snapshot Passato
             </Button>
           </div>
-        </div>
-      </div>
+        }
+      />
 
       {/* ── HERO ──────────────────────────────────────────────────────── */}
       <motion.section
@@ -1398,6 +1395,6 @@ export default function HistoryPage() {
         snapshots={snapshots}
         onSave={handleSaveNote}
       />
-    </div>
+    </PageContainer>
   );
 }

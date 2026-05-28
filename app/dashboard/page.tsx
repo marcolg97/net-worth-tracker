@@ -36,6 +36,8 @@ import { useChartColors } from '@/lib/hooks/useChartColors';
 import { useDemoMode } from '@/lib/hooks/useDemoMode';
 import { cachedFormatCurrencyEUR } from '@/lib/utils/formatters';
 import { cn } from '@/lib/utils';
+import { PageContainer } from '@/components/layout/PageContainer';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 const MotionButtonShell = motion.div;
 
@@ -206,7 +208,7 @@ export default function DashboardPage() {
   // ─── Loading skeleton ─────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="space-y-4 max-desktop:portrait:pb-20">
+      <PageContainer className="space-y-4">
         <div className="pb-4 border-b border-border">
           <div className="h-3 w-20 bg-muted rounded animate-pulse mb-2" />
           <div className="h-8 w-56 bg-muted rounded animate-pulse mb-2" />
@@ -262,7 +264,7 @@ export default function DashboardPage() {
             <div className="rounded-2xl bg-muted h-[220px] animate-pulse" />
           </div>
         </div>
-      </div>
+      </PageContainer>
     );
   }
 
@@ -271,16 +273,13 @@ export default function DashboardPage() {
     <motion.div
       layout="position"
       transition={springLayoutTransition}
-      className="space-y-4 max-desktop:portrait:pb-20"
+      className="max-w-[1600px] mx-auto w-full space-y-4 max-desktop:portrait:pb-20"
     >
-      {/* ── PAGE HEADER ── */}
-      <div className="pb-4 border-b border-border">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest mb-1">Panoramica</p>
-            <h1 className="text-2xl font-bold text-foreground sm:text-3xl">{greeting.label}</h1>
-            <p className="mt-1 text-muted-foreground sm:mt-2">{greeting.subtitle}</p>
-          </div>
+      <PageHeader
+        label="Panoramica"
+        title={greeting.label}
+        description={greeting.subtitle}
+        actions={
           <MotionButtonShell
             whileTap={prefersReducedMotion ? undefined : { scale: 0.97 }}
             transition={springLayoutTransition}
@@ -297,8 +296,8 @@ export default function DashboardPage() {
               {creatingSnapshot ? 'Creazione...' : 'Crea Snapshot'}
             </Button>
           </MotionButtonShell>
-        </div>
-      </div>
+        }
+      />
 
       {/* ── HERO + LIQUID — desktop: 2/3 + 1/3 grid ── */}
       <motion.section
