@@ -59,3 +59,11 @@
 - Improved: Filter panel in the Cashflow Tracking tab is now fully keyboard-accessible — Tab navigates to it and Enter/Space opens or closes it (previously only reachable by mouse)
 - Improved: Expense creation dialog now announces its type picker as a radio group to screen readers, so users relying on assistive technology hear "Tipo di voce da registrare, radiogroup" and can navigate the four options correctly
 - Improved: Expense creation and edit dialog now provides a contextual description to screen readers when it opens ("Seleziona il tipo di voce da registrare", "Inserisci i dettagli della nuova voce", or "Modifica i dettagli della voce selezionata" depending on the current step)
+- Improved: Budget tab progress bars now announce their value to screen readers — assistive technology reads "Avanzamento budget, X%" for each category row instead of skipping the bar entirely (WCAG 4.1.2)
+- Improved: Budget tab section headers, category rows, and subtotal rows are now keyboard-accessible — Tab navigates to them and Enter or Space expands/collapses or opens the historical drill-down (WCAG 2.1.1)
+- Improved: Budget tab percentage values now render in a monospaced font, keeping numbers visually aligned across rows
+- Improved: Budget tab loading state now shows a structural skeleton matching the page layout instead of a plain text message
+- Improved: Budget tab item detail dialog (mobile) now announces the category name and context to screen readers when it opens
+- Improved: Budget tab reorder and delete buttons in edit mode now announce their target category to screen readers
+- Improved: Budget tab over-budget progress bars now follow the active color theme's destructive color instead of a fixed red — adapts correctly across all six themes including Cyberpunk and Solar Dusk
+- Improved: Budget tab delta percentages and table text adapt correctly to all six color themes — no more fixed gray or green values that clashed with non-default themes

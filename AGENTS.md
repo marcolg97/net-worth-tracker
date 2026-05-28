@@ -402,6 +402,10 @@ For pages that aggregate large collections (many snapshots + all expenses) on ev
 
 ### Progress Bar ARIA
 - A visual progress bar (`<div>` animated with Framer Motion) has no semantic meaning to screen readers. Always add `role="progressbar"`, `aria-valuenow={Math.round(value)}`, `aria-valuemin={0}`, `aria-valuemax={100}`, and `aria-label` describing what is being measured.
+- Place `role="progressbar"` and all `aria-value*` attrs on the **track container** (outer div), not the fill element. The outer element carries the semantic value; the inner fill is purely decorative.
+
+### `title` Attribute Is Not a Reliable Accessible Name for Buttons
+- `title="Sposta su"` on a `<button>` looks like it provides an accessible label, but `title` is not reliably announced by screen readers (VoiceOver on iOS ignores it entirely; NVDA behaviour varies). Always use `aria-label` as the primary accessible name for icon-only action buttons. Keep `title` only if you also want a hover tooltip for pointer users — but `aria-label` must always be present too.
 
 ### Accessibility Patterns
 - **Calendar grid ARIA structure**: a 7-column calendar grid requires explicit ARIA roles — not just visual CSS grid. Pattern: outer container `role="grid" aria-label="Calendario pagamenti dividendi"`; header row `role="row"` with each day cell `role="columnheader" aria-label={fullDayName}`; each of the 6 week rows as `role="row"` (flat 42-cell array must be sliced: `Array.from({ length: 6 }, (_, i) => cells.slice(i*7, i*7+7))`); each date cell `role="gridcell"`. Using CSS `grid-cols-7` alone creates no navigable structure — the DOM rows must exist as elements. Applied in `DividendCalendar.tsx`.
@@ -489,6 +493,10 @@ For pages that aggregate large collections (many snapshots + all expenses) on ev
 
 ### Cashflow Null State vs Genuine Zero
 - `expenseStats === null` (no data) ≠ `expenseStats = 0` (real zero). Render empty state for null; `€0,00` is reserved for confirmed zero
+
+### Deriving Text-Color Classes from BG-Color Classes via String Replace
+- **Anti-pattern**: `progressColor(ratio).replace('bg-green-500', 'text-green-600 dark:text-green-500')` to get a matching text color. Fragile: breaks silently if the source class name changes; Tailwind's JIT scanner treats the derived string as a new class name, which is never statically visible in source — it may or may not appear in the purged output depending on safelist config.
+- **Fix**: extract a dedicated `progressTextColor(ratio, inverted)` that returns text-class strings directly, using the same threshold logic as `progressColor`. The two functions stay in sync and both are statically scannable. Applied in `BudgetTab.tsx`.
 
 ### Recharts Sparkline — flat line on large absolute numbers
 - Symptom: 260k → 284k sparkline is a flat horizontal line. Fix: `<YAxis hide domain={['auto', 'auto']} />` — scales Y to data range instead of starting from 0
