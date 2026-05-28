@@ -55,3 +55,7 @@
 - **Accessibility — touch targets**: password toggle buttons on login/register enlarged from 28px to 44px
 - **Accessibility — form autofill**: login and register fields now have correct `autoComplete` hints so browsers and password managers fill them correctly
 - **Sidebar accent contrast**: fixed in Retro Arcade (light and dark) and Solar Dusk (light) — active sidebar items now meet WCAG AA contrast in all six themes
+- Improved: Cashflow Tracking tab — income and expense KPI amounts (Entrate, Spese, Risparmio) now use theme-aware color tokens instead of fixed green/red, so they adapt correctly to all six color themes including Cyberpunk and Solar Dusk
+- Improved: Filter panel in the Cashflow Tracking tab is now fully keyboard-accessible — Tab navigates to it and Enter/Space opens or closes it (previously only reachable by mouse)
+- Improved: Expense creation dialog now announces its type picker as a radio group to screen readers, so users relying on assistive technology hear "Tipo di voce da registrare, radiogroup" and can navigate the four options correctly
+- Improved: Expense creation and edit dialog now provides a contextual description to screen readers when it opens ("Seleziona il tipo di voce da registrare", "Inserisci i dettagli della nuova voce", or "Modifica i dettagli della voce selezionata" depending on the current step)

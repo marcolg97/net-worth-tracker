@@ -5,8 +5,7 @@ Net Worth Tracker is a Next.js app for Italian investors to track net worth, ass
 
 ## Current Status
 - Stack: Next.js 16, React 19, TypeScript 5, Tailwind v4, Firebase, Vitest, Framer Motion, Recharts, Yahoo Finance, Borsa Italiana scraping, Anthropic
-- Latest (2026-05-28, session fix/dividends-audit): **Dividendi tab quality pass** — (1) Theming: hardcoded hex `#10B981`/`#EF4444`/`#3B82F6` in Bar/Line charts → `COLORS[0/4/2]` from `useChartColors()`; `text-purple-*` on card icons/values → semantic tokens; `text-green/red-600` → `text-emerald-600 dark:text-emerald-400` / `text-destructive` throughout (YOC, DPS growth, Total Return, header cols); `DividendDetailsDialog` badge dark: variants were missing — fixed by importing from shared constant. (2) A11y: `DividendCalendar` → `role="grid"`, 6 `role="row"` divs, `role="columnheader"` on day headers; `CalendarDayCell` → `role="gridcell"`, `aria-label` (date + payment count), `aria-selected`, `aria-current="date"` on today; `MetricInfoTooltip` → `aria-expanded`, `aria-haspopup`, Escape handler. (3) Today highlight `border-blue-500` → `ring-2 ring-inset ring-primary`. (4) `md:` → `desktop:` in calendar. (5) `AmountWithConversion` extracted to module level (was re-created on every render). (6) `window.confirm()` → 2-click inline delete in `DividendTable` + `AlertDialog` for bulk scraping. (7) Emoji → `<Info>` icon; `dark:bg-gray-700` override on Button removed. (8) `dividendTypeLabels` + `dividendTypeBadgeColor` consolidated into `lib/constants/dividendTypes.ts` (was duplicated in 3 files with divergent dark: variants). Key files: `components/dividends/{CalendarDayCell,DividendCalendar,DividendDetailsDialog,DividendStats,DividendTable,DividendTrackingTab}.tsx`, `lib/constants/dividendTypes.ts`.
-- Previous sessions: see `git log` on branch `develop`
+- Latest (2026-05-28, session fix/cashflow-tracciamento-audit): **Cashflow Tracciamento + ExpenseDialog quality pass** — (1) Theming: 8 hardcoded `text-red-*/green-*` in KPI blocks (ENTRATE, SPESE, RISPARMIO), mobile row amounts, `TYPE_DOT_CLASS` income → `text-emerald-*/text-destructive`; `#3b82f6` fallback in category combobox → `var(--primary)`. (2) A11y: `CollapsibleTrigger asChild` + `<div>` → `<button type="button">` (WCAG 2.1.1); `DialogDescription className="sr-only"` added to `ExpenseDialog` with contextual text per step/mode (WCAG 4.1.2); type picker cards → `role="radiogroup"` + `role="radio"` + `aria-checked={false}`; Anno filter → `role="group"` + `aria-labelledby`. Key files: `components/cashflow/ExpenseTrackingTab.tsx`, `components/expenses/ExpenseDialog.tsx`.
 
 ## Architecture Snapshot
 - App Router with protected pages under `app/dashboard/*`
@@ -89,7 +88,7 @@ Net Worth Tracker is a Next.js app for Italian investors to track net worth, ass
 - Mobile perf: `lib/hooks/useMediaQuery.ts`
 - Server-side use cases / processors: `lib/server/assetAdminRepository.ts`, `lib/server/dividendUseCase.ts`, `lib/server/dividendProcessor.ts`, `lib/server/monthlyEmailService.ts`
 
-**Last updated**: 2026-05-28 (fix/dividends-audit — Dividendi tab quality pass: theming, ARIA, 2-click delete, shared constants)
+**Last updated**: 2026-05-28 (fix/cashflow-tracciamento-audit — Cashflow Tracciamento quality pass: theming tokens, keyboard accessibility, dialog ARIA)
 
 ## Design Context
 
