@@ -212,7 +212,7 @@ export default function DashboardPage() {
           <div className="h-8 w-56 bg-muted rounded animate-pulse mb-2" />
           <div className="h-4 w-44 bg-muted rounded animate-pulse" />
         </div>
-        {/* Hero + Liquid skeleton */}
+        {/* Hero + Liquid skeleton — mirrors the desktop:grid-cols-[2fr_1fr] live layout */}
         <div className="grid gap-4 desktop:grid-cols-[2fr_1fr]">
           <div className="rounded-2xl border border-border bg-card p-[22px]">
             <div className="h-3 w-40 bg-muted rounded animate-pulse mb-3" />
@@ -251,6 +251,15 @@ export default function DashboardPage() {
             <div className="space-y-2">
               {[...Array(3)].map((_, i) => <div key={i} className="h-6 bg-muted rounded animate-pulse" />)}
             </div>
+          </div>
+        </div>
+
+        {/* Charts skeleton — mirrors OverviewChartsSection structure */}
+        <div className="border-t border-border/40 pt-4">
+          <div className="h-3 w-24 bg-muted rounded animate-pulse mb-4" />
+          <div className="grid desktop:grid-cols-2 gap-4">
+            <div className="rounded-2xl bg-muted h-[220px] animate-pulse" />
+            <div className="rounded-2xl bg-muted h-[220px] animate-pulse" />
           </div>
         </div>
       </div>
@@ -293,6 +302,7 @@ export default function DashboardPage() {
 
       {/* ── HERO + LIQUID — desktop: 2/3 + 1/3 grid ── */}
       <motion.section
+        aria-label="Patrimonio"
         layout="position"
         transition={springLayoutTransition}
         variants={staggerContainer}

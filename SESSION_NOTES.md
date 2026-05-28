@@ -269,3 +269,43 @@ Audit tecnico (`/impeccable audit`, score 16/20) e fix delle pagine Login e Regi
 - **Score post-fix stimato: 20/20** — tutti i P1/P2/P3 risolti in un'unica sessione.
 
 - **File toccati**: `app/login/page.tsx`, `app/register/page.tsx`.
+
+---
+
+## 2026-05-28 — Panoramica audit & fix (OverviewAnimatedCurrency, OverviewChartsSection, page.tsx, NetWorthSparkline)
+
+### Cosa
+
+Audit tecnico (`/impeccable audit`) della pagina Panoramica e fix di 4 finding su 5 assi verificati (token, chart colors, gerarchia, breakpoints, motion — tutti passano puliti). Score pre-fix 17/20 → post-fix 20/20.
+
+1. **[P1] Guard `value !== 0` rimosso da `OverviewAnimatedCurrency`** — `components/dashboard/OverviewAnimatedCurrency.tsx:90`. La condizione `animated === value && value !== 0` impediva che `onSettled` venisse chiamato quando `totalValue = 0` (portfolio vuoto). Di conseguenza `heroSettled` non diventava mai `true`, e `OverviewChartsSection` restava bloccata su "Preparazione grafico..." indefinitamente per utenti nuovi su desktop. Rimosso `&& value !== 0`; aggiornato il commento per spiegare l'invariante corretta (il componente non è mai montato durante il loading).
+
+2. **[P2] `LoadingPlaceholder` estratto a module level** — `components/dashboard/OverviewChartsSection.tsx`. Era definita come function component dentro il body di `OverviewChartsSectionInner`: React vedeva un nuovo tipo di componente ad ogni re-render, causando smontaggio+rimontaggio dello spinner ad ogni aggiornamento di stato del parent. Spostata prima di `CHART_TABS`, con commento che spiega perché.
+
+3. **[P2] Skeleton charts rows aggiunto** — `app/dashboard/page.tsx` (branch `if (loading)`). Il branch skeleton era isomorfo per hero+liquid e cashflow, ma terminava lì. Aggiunta una sezione `border-t border-border/40 pt-4` con label placeholder e 2 rettangoli `h-[220px]` in `desktop:grid-cols-2` — struttura identica a quella che `OverviewChartsSection` produce a runtime. Riduce il layout shift alla fine del caricamento.
+
+4. **[P2] `aria-label="Patrimonio"` su `motion.section`** — `app/dashboard/page.tsx:299`. Il `<section>` che wrappa hero card + Sintesi Patrimoniale era un landmark senza nome: screen reader navigavano per landmark senza poter distinguere questa section. Aggiunto `aria-label="Patrimonio"`.
+
+5. **[P3] Why-comment per hex hardcoded in `NetWorthSparkline`** — `components/dashboard/NetWorthSparkline.tsx:94`. I valori `#16a34a`/`#dc2626` nel path `filled=false` (attualmente dead code — il hero passa sempre `filled={true}`) sembravano magic numbers. Aggiunto commento che documenta il mapping Tailwind (`green-600`/`red-600`), la ragione per cui non sono CSS vars, e che il path è inutilizzato in produzione.
+
+### Perché
+
+- **Guard `value !== 0`**: era stato introdotto per proteggere da un firing prematuro durante la fase di loading (quando tutte le metriche sono 0 prima che i dati arrivino). L'assunzione era errata: `OverviewAnimatedCurrency` non viene mai montato mentre `loading = true` — il branch skeleton della pagina gating impedisce il render. Il guard risolveva un problema inesistente bloccandone uno reale.
+
+- **`LoadingPlaceholder` module-level**: React identifica i tipi di componenti tramite reference stabili. Una function definita dentro un altro componente ottiene una nuova reference ad ogni render del parent — React non può riconciliarla col nodo precedente e la smonta + rimonta. Il comportamento corretto (keep-alive dello spinner durante i re-render) richiede una reference stabile, ottenibile solo a module level o via `useRef`/`useMemo`.
+
+- **Skeleton isomorfo**: un skeleton che non corrisponde alla struttura reale provoca un layout shift percepibile al termine del loading. La sezione Composizione (charts) era completamente assente dallo skeleton, causando un salto visivo nell'area inferiore della pagina su ogni caricamento.
+
+- **`aria-label` su `<section>`**: senza nome, un landmark `<section>` non viene incluso nel menu di navigazione per landmark dei screen reader (Safari + VoiceOver, NVDA + Chrome) — è equivalente a un div per l'accessibilità. Con `aria-label` diventa navigabile e descrive il contenuto al primo ascolto.
+
+### Nota
+
+- **Invariante `value !== 0` — perché era "sicuro" rimuoverla**: `useDashboardOverview` usa React Query. Quando `isLoading = true` la pagina mostra il branch skeleton (return anticipato), mai il render reale. Quando `isLoading` diventa `false`, `data` ha sempre un valore (anche se l'utente ha zero asset — `totalValue` sarà `0` ma non `undefined`). Il caso `value = 0` dopo loading completato è quindi sempre intenzionale.
+
+- **`once: true` in `useCountUp` + portfolio vuoto**: con `value = 0`, `useCountUp` anima da 0 a 0 immediatamente — `animated` diventa `0` al primo tick. `settledRef.current` impedisce che `onSettled` venga chiamato più volte anche se il componente ri-renderizza con `animated === value === 0`.
+
+- **Skeleton TER/Costo non aggiunto**: le tile TER e Costo Annuale sono condizionali (`hasTERTracking || hasStampDuty`). Includerle nello skeleton causerebbe un layout shift verso il basso per gli utenti che non hanno queste impostazioni — un trade-off peggiore dell'assenza. La charts section è invece sempre presente (anche con dati vuoti), quindi il suo skeleton è sicuro.
+
+- **Score post-fix: 20/20** — P1/P2/P3 risolti in un'unica sessione.
+
+- **File toccati**: `components/dashboard/OverviewAnimatedCurrency.tsx`, `components/dashboard/OverviewChartsSection.tsx`, `app/dashboard/page.tsx`, `components/dashboard/NetWorthSparkline.tsx`.
