@@ -59,7 +59,7 @@ export function SearchableCombobox({
   id,
   onCreateOption,
   createOptionLabel = 'Aggiungi',
-}: SearchableComboboxProps) {
+}: Readonly<SearchableComboboxProps>) {
   // === State Management ===
 
   const [searchQuery, setSearchQuery] = useState('');

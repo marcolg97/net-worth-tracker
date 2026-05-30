@@ -20,6 +20,7 @@ import {
 import {
   getExpenseCountBySubCategoryId,
   reassignExpensesSubCategory,
+  moveExpensesFromSubCategory,
 } from '@/lib/services/expenseService';
 import { CategoryDeleteConfirmDialog } from './CategoryDeleteConfirmDialog';
 import { ResponsiveModal } from '@/components/ui/responsive-modal';
@@ -35,7 +36,7 @@ import {
 import { toast } from 'sonner';
 import { Plus, X, ArrowRightLeft, Check, Tag } from 'lucide-react';
 import { CategoryMoveDialog } from './CategoryMoveDialog';
-import { moveExpensesFromSubCategory } from '@/lib/services/expenseService';
+import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
 import { cn } from '@/lib/utils';
 
 
@@ -97,7 +98,6 @@ export interface CategoryManagementDialogProps {
 interface FormBodyProps {
   category?: ExpenseCategory | null;
   subCategories: ExpenseSubCategory[];
-  setSubCategories: (subs: ExpenseSubCategory[]) => void;
   newSubCategoryName: string;
   setNewSubCategoryName: (v: string) => void;
   handleAddSubCategory: () => void;
@@ -109,14 +109,13 @@ interface FormBodyProps {
 function CategoryFormBody({
   category,
   subCategories,
-  setSubCategories,
   newSubCategoryName,
   setNewSubCategoryName,
   handleAddSubCategory,
   handleRemoveSubCategory,
   handleMoveSubCategory,
   form,
-}: FormBodyProps) {
+}: Readonly<FormBodyProps>) {
   const { register, setValue, control, formState: { errors } } = form;
   const selectedColor = useWatch({ control, name: 'color' });
   const selectedType  = useWatch({ control, name: 'type' });
@@ -148,7 +147,7 @@ function CategoryFormBody({
         >
           <SelectTrigger id="cat-type" aria-label="Tipo di voce">
             <span className={cn(!selectedType && 'text-muted-foreground')}>
-              {selectedType ? EXPENSE_TYPE_LABELS[selectedType as ExpenseType] : 'Seleziona tipo'}
+              {selectedType ? EXPENSE_TYPE_LABELS[selectedType] : 'Seleziona tipo'}
             </span>
           </SelectTrigger>
           <SelectContent>
@@ -169,7 +168,7 @@ function CategoryFormBody({
           const crossesBoundary = (category.type === 'income') !== (selectedType === 'income');
           return crossesBoundary ? (
             <p className="text-xs text-amber-600 dark:text-amber-400">
-              Attenzione: tutti gli importi cambieranno segno (da {EXPENSE_TYPE_LABELS[category.type]} a {EXPENSE_TYPE_LABELS[selectedType as ExpenseType]}).
+              Attenzione: tutti gli importi cambieranno segno (da {EXPENSE_TYPE_LABELS[category.type]} a {EXPENSE_TYPE_LABELS[selectedType]}).
             </p>
           ) : (
             <p className="text-xs text-muted-foreground">
@@ -304,8 +303,9 @@ export function CategoryManagementDialog({
   initialType,
   initialName,
   initialSubCategoryName,
-}: CategoryManagementDialogProps) {
+}: Readonly<CategoryManagementDialogProps>) {
   const { user } = useAuth();
+  const isMobile = useMediaQuery('(max-width: 768px)');
 
   const [subCategories, setSubCategories] = useState<ExpenseSubCategory[]>([]);
   const [newSubCategoryName, setNewSubCategoryName] = useState('');
@@ -349,7 +349,7 @@ export function CategoryManagementDialog({
     }
     setSubCategories([
       ...subCategories,
-      { id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, name: trimmed },
+      { id: `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`, name: trimmed },
     ]);
     setNewSubCategoryName('');
   };
@@ -380,11 +380,7 @@ export function CategoryManagementDialog({
   const handleConfirmSubCategoryDelete = async (newCategoryId?: string, newSubCategoryId?: string) => {
     if (!category || !subCategoryToDelete || !user) return;
     try {
-      if (!newCategoryId) {
-        await reassignExpensesSubCategory(category.id, subCategoryToDelete.id, user.uid, undefined, undefined);
-        setSubCategories(subCategories.filter((s) => s.id !== subCategoryToDelete.id));
-        toast.success(`Sottocategoria "${subCategoryToDelete.name}" eliminata. Le spese rimarranno nella categoria senza sottocategoria.`);
-      } else {
+      if (newCategoryId) {
         await reassignExpensesSubCategory(
           category.id, subCategoryToDelete.id, user.uid,
           newSubCategoryId,
@@ -392,6 +388,10 @@ export function CategoryManagementDialog({
         );
         setSubCategories(subCategories.filter((s) => s.id !== subCategoryToDelete.id));
         toast.success('Spese riassegnate e sottocategoria rimossa');
+      } else {
+        await reassignExpensesSubCategory(category.id, subCategoryToDelete.id, user.uid);
+        setSubCategories(subCategories.filter((s) => s.id !== subCategoryToDelete.id));
+        toast.success(`Sottocategoria "${subCategoryToDelete.name}" eliminata. Le spese rimarranno nella categoria senza sottocategoria.`);
       }
       setDeleteSubCategoryDialogOpen(false);
       setSubCategoryToDelete(null);
@@ -477,16 +477,12 @@ export function CategoryManagementDialog({
   };
 
   const title = category ? 'Modifica Categoria' : 'Nuova Categoria';
-  const submitLabel = isSubmitting
-    ? 'Salvataggio\u2026'
-    : category
-    ? 'Salva Modifiche'
-    : 'Crea Categoria';
+  const baseLabel = category ? 'Salva Modifiche' : 'Crea Categoria';
+  const submitLabel = isSubmitting ? 'Salvataggio…' : baseLabel;
 
   const formBodyProps: FormBodyProps = {
     category,
     subCategories,
-    setSubCategories,
     newSubCategoryName,
     setNewSubCategoryName,
     handleAddSubCategory,
@@ -539,7 +535,7 @@ export function CategoryManagementDialog({
         onClose={onClose}
         title={title}
         dialogClassName="max-w-3xl"
-        footer={(isMobile) =>
+        footer={
           isMobile ? (
             <>
               <Button type="submit" form="category-form" disabled={isSubmitting} className="w-full">

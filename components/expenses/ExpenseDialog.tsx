@@ -64,6 +64,7 @@ import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { ChevronDown } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils/formatters';
+import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
 import { cn } from '@/lib/utils';
 
 
@@ -74,13 +75,13 @@ import { cn } from '@/lib/utils';
 const expenseSchema = z
   .object({
     type: z.enum(['fixed', 'variable', 'debt', 'income']),
-    categoryId: z.string().min(1, 'Categoria e obbligatoria'),
+    categoryId: z.string().min(1, "Categoria è obbligatoria"),
     subCategoryId: z.string().optional(),
     amount: z.number().positive("L'importo deve essere positivo"),
-    currency: z.string().min(1, 'Valuta e obbligatoria'),
+    currency: z.string().min(1, "Valuta è obbligatoria"),
     date: z.date(),
     notes: z.string().optional(),
-    link: z.string().url('Inserisci un URL valido').optional().or(z.literal('')),
+    link: z.string().url({ message: 'Inserisci un URL valido' }).optional().or(z.literal('')),
     isRecurring: z.boolean().optional(),
     recurringDay: z.number().min(1).max(31).optional(),
     recurringMonths: z.number().min(1).max(120).optional(),
@@ -99,8 +100,7 @@ const expenseSchema = z
         if (data.installmentMode === 'auto' && !data.installmentTotalAmount) return false;
         if (
           data.installmentMode === 'manual' &&
-          (!data.installmentAmounts ||
-            data.installmentAmounts.length !== data.installmentCount)
+          data.installmentAmounts?.length !== data.installmentCount
         )
           return false;
       }
@@ -143,7 +143,7 @@ interface InstallmentPreviewProps {
   count: number;
 }
 
-function InstallmentPreview({ total, count }: InstallmentPreviewProps) {
+function InstallmentPreview({ total, count }: Readonly<InstallmentPreviewProps>) {
   const base = Math.floor((total / count) * 100) / 100;
   const remainder = total - base * count;
   const last = base + remainder;
@@ -252,7 +252,7 @@ function ExpenseFormBody({
   onCreateSubCategory,
   advancedOpen,
   setAdvancedOpen,
-}: FormBodyProps) {
+}: Readonly<FormBodyProps>) {
   return (
     <form id="expense-form" onSubmit={handleSubmit(onSubmit)} className="space-y-5">
 
@@ -356,7 +356,7 @@ function ExpenseFormBody({
                   const dateString = e.target.value;
                   if (dateString) {
                     const date = new Date(dateString + 'T00:00:00');
-                    if (!isNaN(date.getTime())) field.onChange(date);
+                    if (!Number.isNaN(date.getTime())) field.onChange(date);
                   }
                 }}
                 className={errors.date ? 'border-destructive' : ''}
@@ -617,7 +617,7 @@ function ExpenseFormBody({
                               const dateString = e.target.value;
                               if (dateString) {
                                 const date = new Date(dateString + 'T00:00:00');
-                                if (!isNaN(date.getTime())) field.onChange(date);
+                                if (!Number.isNaN(date.getTime())) field.onChange(date);
                               }
                             }}
                           />
@@ -665,7 +665,7 @@ function ExpenseFormBody({
                                 const dateString = e.target.value;
                                 if (dateString) {
                                   const date = new Date(dateString + 'T00:00:00');
-                                  if (!isNaN(date.getTime())) field.onChange(date);
+                                  if (!Number.isNaN(date.getTime())) field.onChange(date);
                                 }
                               }}
                             />
@@ -686,7 +686,7 @@ function ExpenseFormBody({
                             const perInstallment = Number((baseAmount / count).toFixed(2));
                             setValue(
                               'installmentAmounts',
-                              Array(count).fill(perInstallment)
+                              new Array(count).fill(perInstallment)
                             );
                           }}
                         >
@@ -703,7 +703,7 @@ function ExpenseFormBody({
                                     index
                                   );
                                   return (
-                                    <div key={index} className="flex items-center gap-2">
+                                    <div key={`installment-${index}`} className="flex items-center gap-2">
                                       <Label className="w-36 text-sm shrink-0 text-muted-foreground">
                                         Rata {index + 1} (
                                         {format(installmentDate, 'MMM yyyy', {
@@ -757,7 +757,7 @@ function ExpenseFormBody({
                     Ricorrenza mensile
                   </Label>
                   <p className="text-xs text-muted-foreground">
-                    Crea questa voce per piu mesi consecutivi
+                    Crea questa voce per più mesi consecutivi
                   </p>
                 </div>
                 <Switch
@@ -822,9 +822,10 @@ function ExpenseFormBody({
 // Main component
 // ---------------------------------------------------------------------------
 
-export function ExpenseDialog({ open, onClose, expense, onSuccess }: ExpenseDialogProps) {
+export function ExpenseDialog({ open, onClose, expense, onSuccess }: Readonly<ExpenseDialogProps>) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const isMobile = useMediaQuery('(max-width: 768px)');
 
 
   const [categories, setCategories] = useState<ExpenseCategory[]>([]);
@@ -833,7 +834,7 @@ export function ExpenseDialog({ open, onClose, expense, onSuccess }: ExpenseDial
   const [defaultDebitCashAssetId, setDefaultDebitCashAssetId] = useState<string>('__none__');
   const [defaultCreditCashAssetId, setDefaultCreditCashAssetId] = useState<string>('__none__');
   const [costCenters, setCostCenters] = useState<CostCenter[]>([]);
-  const [costCentersEnabled, setCostCentersEnabledState] = useState(false);
+  const [costCentersEnabled, setCostCentersEnabled] = useState(false);
   const [selectedCostCenterId, setSelectedCostCenterId] = useState<string>('__none__');
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
   const [categoryInitialName, setCategoryInitialName] = useState('');
@@ -925,7 +926,7 @@ export function ExpenseDialog({ open, onClose, expense, onSuccess }: ExpenseDial
       const creditId = settings?.defaultCreditCashAssetId || '__none__';
       setDefaultDebitCashAssetId(debitId);
       setDefaultCreditCashAssetId(creditId);
-      setCostCentersEnabledState(settings?.costCentersEnabled ?? false);
+      setCostCentersEnabled(settings?.costCentersEnabled ?? false);
       setCostCenters(centers);
       if (!expense) {
         const currentType = getValues('type');
@@ -951,7 +952,7 @@ export function ExpenseDialog({ open, onClose, expense, onSuccess }: ExpenseDial
         date:
           expense.date instanceof Date
             ? expense.date
-            : (expense.date as Timestamp).toDate(),
+            : expense.date.toDate(),
         notes: expense.notes || '',
         link: expense.link || '',
         isRecurring: expense.isRecurring || false,
@@ -1057,9 +1058,9 @@ export function ExpenseDialog({ open, onClose, expense, onSuccess }: ExpenseDial
     }
 
     const linkedCashAssetId =
-      data.linkedCashAssetId !== '__none__' ? data.linkedCashAssetId : undefined;
+      data.linkedCashAssetId === '__none__' ? undefined : data.linkedCashAssetId;
     const resolvedCostCenterId =
-      selectedCostCenterId !== '__none__' ? selectedCostCenterId : undefined;
+      selectedCostCenterId === '__none__' ? undefined : selectedCostCenterId;
     const resolvedCostCenterName = resolvedCostCenterId
       ? costCenters.find((c) => c.id === resolvedCostCenterId)?.name
       : undefined;
@@ -1113,7 +1114,7 @@ export function ExpenseDialog({ open, onClose, expense, onSuccess }: ExpenseDial
         const newLinkedAssetId = linkedCashAssetId;
         const oldSignedAmount = expense.amount;
         const newSignedAmount =
-          data.type !== 'income' ? -Math.abs(data.amount) : Math.abs(data.amount);
+          data.type === 'income' ? Math.abs(data.amount) : -Math.abs(data.amount);
 
         let assetUpdated = false;
         if (
@@ -1181,7 +1182,7 @@ export function ExpenseDialog({ open, onClose, expense, onSuccess }: ExpenseDial
               firstAmt = expenseData.installmentAmounts![0];
             }
             firstSignedAmount =
-              data.type !== 'income' ? -Math.abs(firstAmt) : Math.abs(firstAmt);
+              data.type === 'income' ? Math.abs(firstAmt) : -Math.abs(firstAmt);
           } else if (
             expenseData.isRecurring &&
             expenseData.recurringMonths &&
@@ -1190,7 +1191,7 @@ export function ExpenseDialog({ open, onClose, expense, onSuccess }: ExpenseDial
             firstSignedAmount = -Math.abs(data.amount);
           } else {
             firstSignedAmount =
-              data.type !== 'income' ? -Math.abs(data.amount) : Math.abs(data.amount);
+              data.type === 'income' ? Math.abs(data.amount) : -Math.abs(data.amount);
           }
 
           await updateCashAssetBalance(linkedCashAssetId, firstSignedAmount);
@@ -1210,7 +1211,8 @@ export function ExpenseDialog({ open, onClose, expense, onSuccess }: ExpenseDial
   const dialogDescription = isEdit
     ? 'Modifica i dettagli della voce selezionata'
     : 'Inserisci i dettagli della nuova voce';
-  const submitLabel = isSubmitting ? 'Salvataggio...' : isEdit ? 'Salva modifiche' : 'Crea voce';
+  const baseLabel = isEdit ? 'Salva modifiche' : 'Crea voce';
+  const submitLabel = isSubmitting ? 'Salvataggio...' : baseLabel;
 
   const formBodyProps: FormBodyProps = {
     register,
@@ -1260,7 +1262,7 @@ export function ExpenseDialog({ open, onClose, expense, onSuccess }: ExpenseDial
             </Badge>
           ) : undefined
         }
-        footer={(isMobile) =>
+        footer={
           isMobile ? (
             <>
               <Button type="submit" form="expense-form" disabled={isSubmitting} className="w-full">

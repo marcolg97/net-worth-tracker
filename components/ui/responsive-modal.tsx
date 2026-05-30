@@ -35,14 +35,10 @@ export interface ResponsiveModalProps {
   /** Scrollable body content. */
   children: React.ReactNode;
   /**
-   * Footer actions. Pass a render function to receive `isMobile` and adapt button
-   * widths (`w-full` on mobile, default on desktop):
-   *
-   *   footer={(isMobile) => <Button className={isMobile ? 'w-full' : ''}>…</Button>}
-   *
-   * Or pass a ReactNode directly if the same markup works for both contexts.
+   * Footer actions. Callers resolve mobile/desktop layout themselves via
+   * `useMediaQuery` and pass a plain ReactNode.
    */
-  footer?: React.ReactNode | ((isMobile: boolean) => React.ReactNode);
+  footer?: React.ReactNode;
   /**
    * Extra className merged into DialogContent. Use to override the default
    * dialog width of `max-w-4xl`.
@@ -73,9 +69,6 @@ export function ResponsiveModal({
   const resolvedDescription =
     description ?? (typeof title === 'string' ? title : undefined);
 
-  const resolvedFooter =
-    typeof footer === 'function' ? footer(isMobile) : footer;
-
   if (isMobile) {
     return (
       <Drawer open={open} onOpenChange={(v) => !v && onClose()}>
@@ -93,8 +86,8 @@ export function ResponsiveModal({
             {children}
           </div>
 
-          {resolvedFooter && (
-            <DrawerFooter>{resolvedFooter}</DrawerFooter>
+          {footer && (
+            <DrawerFooter>{footer}</DrawerFooter>
           )}
         </DrawerContent>
       </Drawer>
@@ -110,26 +103,26 @@ export function ResponsiveModal({
         )}
       >
         <DialogHeader className="px-6 pt-6 pb-4 border-b shrink-0">
-          {resolvedDescription && (
-            <DialogDescription className="sr-only">
-              {resolvedDescription}
-            </DialogDescription>
-          )}
           <div className="flex items-center gap-3">
             <DialogTitle className="text-base font-semibold leading-none">
               {title}
             </DialogTitle>
             {headerExtra}
           </div>
+          {resolvedDescription && (
+            <DialogDescription className="sr-only">
+              {resolvedDescription}
+            </DialogDescription>
+          )}
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto min-h-0 px-6 py-5">
           {children}
         </div>
 
-        {resolvedFooter && (
+        {footer && (
           <div className="px-6 pb-6 pt-4 border-t shrink-0 flex justify-end gap-2">
-            {resolvedFooter}
+            {footer}
           </div>
         )}
       </DialogContent>
